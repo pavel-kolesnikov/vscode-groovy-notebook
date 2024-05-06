@@ -19,22 +19,15 @@ class ContextManager {
 	}
 
 	public get(key: string, cmd: string, cwd: string): ChildProcess {
-		console.log("checking for process key:", key);
-
 		let p = this.processes.get(key);
 		
 		if (!p) {
-			console.log(`spawning new process: '${cmd}' in '${cwd}'`);
-
 			p = spawn(cmd, { shell: true, cwd: cwd });
 			this.processes.set(key, p);
-
-			console.log(`spawned PID ${p.pid}, tracking processes:`, this.processes.size);			
 		}
 		
 		return p;
 	}
-
 }
 
 export class GroovyKernel {
@@ -115,7 +108,6 @@ export class GroovyKernel {
 
 			execution.end(result.success, Date.now());
 		} catch (err) {
-			console.log(err);
 			this.interruptHandler();
 			execution.appendOutput([new vscode.NotebookCellOutput([
 				vscode.NotebookCellOutputItem.stderr(err as string)
@@ -145,7 +137,7 @@ export class GroovyKernel {
 			let stderr = "";
 			groovyshProcess.stderr?.on('data', (data: Buffer | string) => {
 				const s = data.toString();
-				console.log(`stderr: '${s}'`);
+
 				stderr += s;
 				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
 					stderr = stderr.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
@@ -156,7 +148,6 @@ export class GroovyKernel {
 			let stdout = "";
 			groovyshProcess.stdout?.on('data', (data: Buffer | string) => {
 				const s = data.toString();
-				console.log(`stdout: '${s}'`);
 				stdout += s;
 				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
 					stdout = stdout.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
@@ -164,7 +155,6 @@ export class GroovyKernel {
 				}
 			});
 
-			console.log(`sending: '''${code}'''`);
 			groovyshProcess.stdin?.write(code + GroovyKernel.END_OF_TRANSMISSION);
 		});
 	}
