@@ -8,9 +8,10 @@
 		"outDir": "out",
 		"sourceMap": true,
 		"strict": true,
-		"rootDir": "src"
+		"rootDir": "src/typescript"
 	},
 	"exclude": [
+		"src/groovy",
 		"node_modules",
 		".vscode-test"
 	]

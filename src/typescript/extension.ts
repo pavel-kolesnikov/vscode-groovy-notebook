@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import { GroovyKernel } from './controller';
 import { GroovyContentSerializer } from './serializer';
 
-async function makeSampleNotebook(kernel: GroovyKernel) {
-	const type = kernel.type;
-	const language = kernel.supportedLanguages[0];
+async function makeSampleNotebook() {
+	const type = GroovyKernel.type;
+	const language = GroovyKernel.supportedLanguages[0];
 	const defaultValue = `println "Hello, Groovy"`;
 	const cell = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, defaultValue, language);
 	const data = new vscode.NotebookData([cell]);
@@ -25,8 +25,8 @@ async function makeSampleNotebook(kernel: GroovyKernel) {
 export function activate(context: vscode.ExtensionContext) {
 	const kernel = new GroovyKernel();
 	context.subscriptions.push(
-		vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', async () => makeSampleNotebook(kernel)),
-		vscode.workspace.registerNotebookSerializer(kernel.type, new GroovyContentSerializer(), { transientOutputs: true }),
+		vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
+		vscode.workspace.registerNotebookSerializer(GroovyKernel.type, new GroovyContentSerializer(), { transientOutputs: true }),
 		kernel
 	);
 }

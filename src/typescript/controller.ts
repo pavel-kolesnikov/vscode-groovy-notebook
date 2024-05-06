@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
 
 export class GroovyKernel {
-	public readonly type = 'groovy-notebook-serializer-kernel';
-	public readonly id = 'groovy-notebook-serializer-kernel';
-	public readonly label = 'Groovy Notebook Kernel';
-	public readonly supportedLanguages = ['groovy'];
+	public static readonly id = 'groovy-notebook-serializer-kernel';
+	public static readonly type = 'groovy-notebook';
+	public static readonly label = 'Groovy Notebook Kernel';
+	public static readonly supportedLanguages = ['groovy'];
 
 	private _executionOrder = 0;
 	private readonly _controller: vscode.NotebookController;
 
 	constructor() {
-		this._controller = vscode.notebooks.createNotebookController(this.id, this.type, this.label);
-		this._controller.supportedLanguages = this.supportedLanguages;
+		this._controller = vscode.notebooks.createNotebookController(GroovyKernel.id, GroovyKernel.type, GroovyKernel.label);
+		this._controller.supportedLanguages = GroovyKernel.supportedLanguages;
 		this._controller.supportsExecutionOrder = true;
 		this._controller.executeHandler = this._executeAll.bind(this);
 	}

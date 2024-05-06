@@ -10,7 +10,7 @@
   "categories": [
     "Notebooks"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/typescript/extension.js",
   "activationEvents": [
     "onNotebook:groovy-notebook-serializer"
   ],
