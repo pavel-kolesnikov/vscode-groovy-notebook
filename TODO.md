@@ -1,6 +1,7 @@
-- [ ] menu button "stop kernel", see runme as a sample
-- [ ] export as a conventional groovy file
 - [ ] FIXME proper process exit detection
+- [ ] FIXME forbid virtual workspaces? (cause of spawning groovy)
+- [ ] menu button "terminate kernel", see `runme` extension as a sample
+- [ ] export as a conventional groovy file
 - [ ] write some tests for Eval.groovy
 - [ ] write some tests for controller
 - [ ] write some tests for serializer

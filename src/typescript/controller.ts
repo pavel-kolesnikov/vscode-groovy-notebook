@@ -12,27 +12,29 @@ class EvalResult {
 }
 
 class ContextManager {
-	private readonly ctx2process: Map<string, ChildProcess> = new Map();
+	private readonly processes: Map<string, ChildProcess> = new Map();
 
 	public dispose() {
-		this.ctx2process.forEach(p => p.kill());
+		this.processes.forEach(p => p.kill());
 	}
 
-	public get(key: string, cmd: string): ChildProcess {
+	public get(key: string, cmd: string, cwd: string): ChildProcess {
 		console.log("checking for process key:", key);
-		let p = this.ctx2process.get(key);
+
+		let p = this.processes.get(key);
+		
 		if (!p) {
-			p = this.spawn(cmd);
-			this.ctx2process.set(key, p);
-			console.log(`spawned PID ${p.pid}, total processes tracking `, this.ctx2process.size);			
+			console.log(`spawning new process: '${cmd}' in '${cwd}'`);
+
+			p = spawn(cmd, { shell: true, cwd: cwd });
+			this.processes.set(key, p);
+
+			console.log(`spawned PID ${p.pid}, tracking processes:`, this.processes.size);			
 		}
+		
 		return p;
 	}
 
-	private spawn(cmd: string): ChildProcess {
-		console.log(`spawn new process: ${cmd}`);
-		return spawn(cmd, { shell: true });
-	}
 }
 
 export class GroovyKernel {
@@ -54,8 +56,8 @@ export class GroovyKernel {
 		this.controller = vscode.notebooks.createNotebookController(GroovyKernel.id, GroovyKernel.type, GroovyKernel.label);
 		this.controller.supportedLanguages = GroovyKernel.supportedLanguages;
 		this.controller.supportsExecutionOrder = true;
-		this.controller.executeHandler = this.executeHandler.bind(this);
 		this.controller.interruptHandler = this.interruptHandler.bind(this);
+		this.controller.executeHandler = this.executeHandler.bind(this);
 
 		this.groovyEvaluatorPath = groovyEvaluatorPath;
 	}
@@ -91,7 +93,11 @@ export class GroovyKernel {
 			const ctxId = cell.document.uri.path;
 			const cmd = `groovy "${this.groovyEvaluatorPath}"`;
 
-			const groovyProcess = this.contextManager.get(ctxId, cmd);
+			// On Windows the path will be `/c:/.....` and on UNIX `//home/...`
+			// We do not need this starting `/`, take from 1 till last / (exclusive), where the file name begins.
+			const cwd = cell.document.uri.path.substring(1, cell.document.uri.path.lastIndexOf("/"));
+
+			const groovyProcess = this.contextManager.get(ctxId, cmd, cwd);
 			const result = await this.communicate(groovyProcess, code);
 
 			if (result.outputItem.data.length > 0) {
