@@ -50,7 +50,7 @@
     "lint": "eslint src --ext ts",
     "pack": "yarn run compile && vsce package --pre-release --allow-missing-repository",
     "vscode:prepublish": "yarn run compile",
-    "install": "code --install-extension groovy-notebook-1.0.0.vsix"
+    "dogfood": "code --install-extension groovy-notebook-1.0.0.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^8.2.2",
