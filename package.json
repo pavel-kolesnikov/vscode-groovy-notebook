@@ -2,7 +2,11 @@
   "name": "groovy-notebook",
   "displayName": "Groovy Notebook",
   "description": "A basic Groovy notebook experience",
-  "publisher": "Pavel Kolesnikov",
+  "publisher": "pkolesnikov",
+  "author": {
+    "name": "Pavel Kolesnikov",
+    "email": "pvl.kolesnikov@gmail.com"
+  },
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -15,7 +19,7 @@
     "Notebook",
     "REPL"
   ],
-  "main": "./out/vscode/extension.js",
+  "main": "./out/extension.js",
   "activationEvents": [
     "onNotebook:groovy-notebook"
   ],
@@ -42,8 +46,9 @@
     "compile": "tsc -b",
     "watch": "tsc -b --watch",
     "lint": "eslint src --ext ts",
-    "pack": "yarn run compile && vsce package",
-    "vscode:prepublish": "yarn run compile"
+    "pack": "yarn run compile && vsce package --pre-release --allow-missing-repository",
+    "vscode:prepublish": "yarn run compile",
+    "install": "code --install-extension groovy-notebook-1.0.0.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^8.2.2",

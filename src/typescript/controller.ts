@@ -24,13 +24,13 @@ class ContextManager {
 		if (!p) {
 			p = this.spawn(cmd);
 			this.ctx2process.set(key, p);
-			console.log("processes count:", this.ctx2process.size);			
+			console.log(`spawned PID ${p.pid}, total processes tracking `, this.ctx2process.size);			
 		}
 		return p;
 	}
 
 	private spawn(cmd: string): ChildProcess {
-		console.log("spawn new process");
+		console.log(`spawn new process: ${cmd}`);
 		return spawn(cmd, { shell: true });
 	}
 }
@@ -89,7 +89,7 @@ export class GroovyKernel {
 			
 			const code = cell.document.getText();
 			const ctxId = cell.document.uri.path;
-			const cmd = `groovy ${this.groovyEvaluatorPath}`;
+			const cmd = `groovy "${this.groovyEvaluatorPath}"`;
 
 			const groovyProcess = this.contextManager.get(ctxId, cmd);
 			const result = await this.communicate(groovyProcess, code);
@@ -110,21 +110,24 @@ export class GroovyKernel {
 	}
 
 	private async communicate(groovyshProcess: ChildProcess, code: string): Promise<EvalResult> {
-		code = code.trim();
-		if (code.length == 0) return Promise.reject("Empty input");
+		groovyshProcess.removeAllListeners();
+		groovyshProcess.stdout?.removeAllListeners();
+		groovyshProcess.stderr?.removeAllListeners();
 
 		return new Promise((resolve, reject) => {
 			// we setup listeners first, then call the evaluation
 
-			groovyshProcess.removeAllListeners();
-
 			groovyshProcess.once('error', reject);
 			groovyshProcess.once('close', (code: number) => {
-				reject(new Error(`Groovy process exited with code ${code}.`));
+				groovyshProcess.stderr?.
+					map(x => x.toString()).
+					toArray().then(chunks => {
+						const err = chunks.join("");
+						reject(new Error(err + `\n\nGroovy process exited with code ${code}.`));
+					});
 			});
 
 			let stderr = "";
-			groovyshProcess.stderr?.removeAllListeners();
 			groovyshProcess.stderr?.on('data', (data: Buffer | string) => {
 				const s = data.toString();
 				console.log(`stderr: '${s}'`);
@@ -136,7 +139,6 @@ export class GroovyKernel {
 			});
 
 			let stdout = "";
-			groovyshProcess.stdout?.removeAllListeners();
 			groovyshProcess.stdout?.on('data', (data: Buffer | string) => {
 				const s = data.toString();
 				console.log(`stdout: '${s}'`);
