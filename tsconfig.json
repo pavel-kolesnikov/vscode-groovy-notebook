@@ -5,13 +5,12 @@
 		"lib": [
 			"es2020"
 		],
-		"outDir": "build/vscode",
+		"outDir": "out/vscode",
 		"sourceMap": true,
 		"strict": true,
 		"rootDir": "src/typescript"
 	},
 	"exclude": [
-		"src/groovy",
 		"node_modules",
 		".vscode-test"
 	]

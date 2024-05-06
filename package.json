@@ -1,8 +1,8 @@
 {
   "name": "groovy-notebook",
-  "displayName": "groovy-notebook",
-  "description": "Simple Groovy Notebook",
-  "publisher": "pkolesnikov",
+  "displayName": "Groovy Notebook",
+  "description": "A basic Groovy notebook experience",
+  "publisher": "Pavel Kolesnikov",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -10,7 +10,12 @@
   "categories": [
     "Notebooks"
   ],
-  "main": "./build/vscode/extension.js",
+  "keywords": [
+    "Groovy",
+    "Notebook",
+    "REPL"
+  ],
+  "main": "./out/vscode/extension.js",
   "activationEvents": [
     "onNotebook:groovy-notebook"
   ],
