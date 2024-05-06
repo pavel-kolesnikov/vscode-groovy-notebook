@@ -1,15 +1,27 @@
-# notebook-serializer-sample
+# Groovy Notebook
 
-This is a very simple extension sample demonstrating the use of the notebook serializer and controller APIs. This sample includes:
+This is a very simple extension that provides basic Groovy Notebook experience.
 
-- A notebook serializer that is activated for files matching `*.sample-json-notebook`. It serializes notebook data into a simple JSON-based format.
-- A notebook controller that "executes" JSON-type code cells by adding an output to the cell that includes the content of the cell parsed as JSON.
-- A command "Create JSON Notebook" that creates a new untitled notebook of this type.
+- A notebook is activated for files matching `*.groovynb`.
+- A notebook cells are executed by a simple wrapper to GroovyShell.
 
-## Running this sample
+# Requirements
 
- 1. `cd notebook-serializer-sample`
- 1. `code .`: Open the folder in VS Code
- 1. Hit `F5` to build+debug
- 1. Run the command "Create JSON Notebook"
- 1. Add and edit cells, and click the run button to invoke the controller
+A `groovy` binary must be in the `PATH`.
+
+# Utilities
+
+Some utility methods are injected into the binding of the shell:
+
+- `p <anything>` --- shortcut to `println <anything>`
+- `pp <anything>` --- shortcut to YAML serialize `<anything>`
+- `grab <group1:module1:1.0.0>(, <more artifacts>)` --- will grab given artifacts from default provider, usually Maven Central.
+- `addClasspath <local path>` --- add given path to the Shell context, making all *.groovy & *.java there available for the Notebook.
+
+# Limitations, a. k. a. FIXME
+
+- Signle groovy context is shared between all open notebooks.
+- No way to terminate groovy via GUI.
+- Can trigger simultaneous execution of a several cells when there's still no Groovy process. A race will happen.
+- Not properly detect groovy process exited in many cases.
+- System.exit(0) in the cell hangs the extension's controller.

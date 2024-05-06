@@ -2,8 +2,9 @@
 npm-debug.log
 Thumbs.db
 /node_modules/
-/out/
+/build/
 /.vs/
 tsconfig.lsif.json
 *.lsif
 *.db
+*.vsix

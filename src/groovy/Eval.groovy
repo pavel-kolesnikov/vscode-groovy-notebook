@@ -6,6 +6,7 @@ class Eval {
     private static final String END_OF_TRANSMISSION = '\4' //ASCII EOT (end of transmission)
 
     public static void main(args) {
+        System.setSecurityManager(new NoExitSecurityManager());
         new Eval().run()
     }
 
@@ -13,15 +14,13 @@ class Eval {
     private GroovyShell shell
 
     Eval() {
+        // Get printed things out from GroovyShell
         Binding shellBinding = new Binding(out: new PrintWriter(scriptOutputBuf))
         shell = new GroovyShell(shellBinding)
         injectMacroses(shellBinding)
     }
 
     private run() {
-        // Get stdout out from GroovyShell
-        // def shell = new GroovyShell()
-
         Scanner scanner = new Scanner(System.in)
         scanner.useDelimiter(END_OF_TRANSMISSION)
 
@@ -57,28 +56,26 @@ class Eval {
         assert shell, "Shell must be initialized first."
 
         binding.with {
+            setVariable "p", { v ->
+                println v
+            }
             setVariable "pp", { v ->
                 def yb = new groovy.yaml.YamlBuilder()
                 yb(v)
                 println yb.toString()
             }
-
-            setVariable "p", { v ->
-                println v
-            }
-
             setVariable "addClasspath", { String path ->
                 assert new File(path).isDirectory(), "Classpath must be a directory"
                 shell.classLoader.addClasspath(path)
             }
-
-            setVariable "grab", { String artifactCoordinates ->
-                Map[] coords = [artifactCoordinates.tokenize(":").with {[
-                    group: it[0],
-                    module: it[1],
-                    version: it[2]
-                ]}]
-
+            setVariable "grab", { String... artifacts ->
+                Map[] coords = artifacts.collect { 
+                    it.tokenize(":").with {[
+                        group: it[0],
+                        module: it[1],
+                        version: it[2]
+                    ]}
+                }
                 groovy.grape.Grape.grab(
                     classLoader: shell.classLoader,
                     coords

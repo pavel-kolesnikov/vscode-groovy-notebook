@@ -10,7 +10,7 @@
   "categories": [
     "Notebooks"
   ],
-  "main": "./out/vscode/extension.js",
+  "main": "./build/vscode/extension.js",
   "activationEvents": [
     "onNotebook:groovy-notebook"
   ],
@@ -37,7 +37,7 @@
     "compile": "tsc -b",
     "watch": "tsc -b --watch",
     "lint": "eslint src --ext ts",
-    "pack": "yarn run compile && vsce package -o out/groovy-notebook.vsix",
+    "pack": "yarn run compile && vsce package",
     "vscode:prepublish": "yarn run compile"
   },
   "devDependencies": {
