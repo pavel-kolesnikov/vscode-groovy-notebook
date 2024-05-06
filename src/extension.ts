@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
-import { SampleKernel } from './controller';
-import { SampleContentSerializer } from './serializer';
+import { GroovyKernel } from './controller';
+import { GroovyContentSerializer } from './serializer';
 
-const NOTEBOOK_TYPE = 'test-notebook-serializer';
+const NOTEBOOK_TYPE = 'groovy-notebook-serializer';
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('notebook-serializer-sample.createJsonNotebook', async () => {
-		const language = 'json';
-		const defaultValue = `{ "hello_world": 123 }`;
+	context.subscriptions.push(vscode.commands.registerCommand('groovy-notebook.createJsonNotebook', async () => {
+		const language = 'groovy';
+		const defaultValue = `println "Hello, Groovy"`;
 		const cell = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, defaultValue, language);
 		const data = new vscode.NotebookData([cell]);
 		data.metadata = {
@@ -26,8 +26,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.workspace.registerNotebookSerializer(
-			NOTEBOOK_TYPE, new SampleContentSerializer(), { transientOutputs: true }
+			NOTEBOOK_TYPE, new GroovyContentSerializer(), { transientOutputs: true }
 		),
-		new SampleKernel()
+		new GroovyKernel()
 	);
 }
