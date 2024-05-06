@@ -45,7 +45,6 @@ export class GroovyKernel {
 
 	private _killProcess() {
 		this._process?.kill();
-		this._process && this._eval(this._process, "System.exit(1)");
 		this._process = null;
 	}
 

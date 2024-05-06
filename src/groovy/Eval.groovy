@@ -6,7 +6,7 @@ class Eval {
     private static final String END_OF_TRANSMISSION = '\4' //ASCII EOT (end of transmission)
 
     public static void main(args) {
-        new Eval().run()
+        new Eval().run(System.in)
     }
 
     private StringWriter scriptOutputBuf = new StringWriter()
@@ -19,26 +19,22 @@ class Eval {
         injectMacroses(shellBinding)
     }
 
-    private run() {
-        Scanner scanner = new Scanner(System.in)
+    private run(java.io.InputStream stdin) {
+        Scanner scanner = new Scanner(stdin)
         scanner.useDelimiter(END_OF_TRANSMISSION)
 
         try {
             while (true) {
                 if (scanner.hasNext()) {
-                    String text = scanner.next().strip()
-                    if (!text) continue
+                    String code = scanner.next().strip()
 
                     try {
-                        scriptOutputBuf.buffer.length = 0
-
-                        def output = shell.parse(text).run()
-                        if (output) println String.valueOf(output).strip()
-
-                        output = String.valueOf(scriptOutputBuf).strip()
-                        if (output) println output
+                        validate(code)
+                        eval(code)
                     } catch (e) {
                         print "Evaluation failed:\n$e"
+                    } catch (java.lang.AssertionError e) {
+                        print e
                     } finally {
                         print END_OF_TRANSMISSION
                     }
@@ -49,6 +45,26 @@ class Eval {
         } finally {
             scanner.close()
         }
+    }
+
+    private validate(String code) {
+        assert code, "Code is empty"
+        assert !code.isEmpty(), "Code is empty"
+        assert !code.contains("System.exit"), "Code has System.exit call"
+    }
+
+    private eval(String code) {
+        cleanupOutput()
+
+        def output = shell.parse(code).run()
+        if (output) println String.valueOf(output).strip()
+
+        output = String.valueOf(scriptOutputBuf).strip()
+        if (output) println output
+    }
+
+    private cleanupOutput() {
+        scriptOutputBuf.buffer.length = 0
     }
 
     private injectMacroses(Binding binding) {

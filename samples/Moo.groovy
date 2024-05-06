@@ -1,5 +1,6 @@
+@groovy.transform.Canonical
 class Moo {
-    def say() {
-        println "MOOO!"
+    String say() {
+        "MOOO!"
     }
 }
