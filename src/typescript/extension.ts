@@ -5,9 +5,12 @@ import { GroovyContentSerializer } from './serializer';
 async function makeSampleNotebook() {
 	const type = GroovyKernel.type;
 	const language = GroovyKernel.supportedLanguages[0];
-	const defaultValue = `println "Hello, Groovy"`;
-	const cell = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, defaultValue, language);
-	const data = new vscode.NotebookData([cell]);
+	const cell = (code: string) => new vscode.NotebookCellData(vscode.NotebookCellKind.Code, code, language);
+	const data = new vscode.NotebookData([
+		cell("a = 1"),
+		cell("b = 2"),
+		cell("println a+b"),
+	]);
 	data.metadata = {
 		custom: {
 			cells: [],
@@ -23,7 +26,9 @@ async function makeSampleNotebook() {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const kernel = new GroovyKernel();
+	const groovyEvaluatorPath = context.asAbsolutePath("src/groovy/Eval.groovy");
+	const kernel = new GroovyKernel(groovyEvaluatorPath);
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
 		vscode.workspace.registerNotebookSerializer(GroovyKernel.type, new GroovyContentSerializer(), { transientOutputs: true }),

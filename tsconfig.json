@@ -5,7 +5,7 @@
 		"lib": [
 			"es2020"
 		],
-		"outDir": "out",
+		"outDir": "out/vscode",
 		"sourceMap": true,
 		"strict": true,
 		"rootDir": "src/typescript"
