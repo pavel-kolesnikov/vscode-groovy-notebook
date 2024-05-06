@@ -2,7 +2,7 @@
   "name": "groovy-notebook",
   "displayName": "Groovy Notebook",
   "description": "A basic Groovy notebook experience",
-  "publisher": "pkolesnikov",
+  "publisher": "Pavel Kolesnikov",
   "author": {
     "name": "Pavel Kolesnikov",
     "email": "pvl.kolesnikov@gmail.com"
