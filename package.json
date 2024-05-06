@@ -2,6 +2,7 @@
   "name": "groovy-notebook",
   "displayName": "Groovy Notebook",
   "description": "A basic Groovy notebook experience",
+  "icon": "assets/notebook.png",
   "publisher": "Pavel Kolesnikov",
   "author": {
     "name": "Pavel Kolesnikov",
