@@ -12,7 +12,7 @@
   ],
   "main": "./out/typescript/extension.js",
   "activationEvents": [
-    "onNotebook:groovy-notebook-serializer"
+    "onNotebook:groovy-notebook"
   ],
   "contributes": {
     "commands": [
@@ -23,7 +23,7 @@
     ],
     "notebooks": [
       {
-        "type": "groovy-notebook-serializer",
+        "type": "groovy-notebook",
         "displayName": "Groovy Notebook",
         "selector": [
           {
