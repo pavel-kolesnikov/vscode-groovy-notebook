@@ -1,24 +1,24 @@
 {
   "name": "groovy-notebook",
   "displayName": "groovy-notebook",
-  "description": "Notebook using Serializer API sample",
-  "publisher": "vscode-samples",
-  "version": "0.0.1",
+  "description": "Simple Groovy Notebook",
+  "publisher": "pkolesnikov",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
-    "Other"
+    "Notebooks"
   ],
+  "main": "./out/extension.js",
   "activationEvents": [
     "onNotebook:groovy-notebook-serializer"
   ],
-  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "groovy-notebook.createJsonNotebook",
-        "title": "Create JSON Notebook"
+        "command": "groovy-notebook.createSampleNotebook",
+        "title": "Create Sample Groovy Notebook"
       }
     ],
     "notebooks": [
