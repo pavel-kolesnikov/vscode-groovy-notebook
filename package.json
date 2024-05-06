@@ -18,7 +18,8 @@
   "keywords": [
     "Groovy",
     "Notebook",
-    "REPL"
+    "REPL",
+    "notebookKernelGroovy"
   ],
   "main": "./out/extension.js",
   "activationEvents": [

@@ -53,7 +53,12 @@ export class GroovyKernel {
 	private readonly groovyEvaluatorPath: string;
 
 	constructor(groovyEvaluatorPath: string) {
-		this.controller = vscode.notebooks.createNotebookController(GroovyKernel.id, GroovyKernel.type, GroovyKernel.label);
+		this.controller = vscode.notebooks.createNotebookController(
+			GroovyKernel.id, 
+			GroovyKernel.type, 
+			GroovyKernel.label
+		);
+		
 		this.controller.supportedLanguages = GroovyKernel.supportedLanguages;
 		this.controller.supportsExecutionOrder = true;
 		this.controller.interruptHandler = this.interruptHandler.bind(this);
@@ -71,7 +76,11 @@ export class GroovyKernel {
 		this.contextManager.dispose();
 	}
 
-	private executeHandler(cells: vscode.NotebookCell[], _notebook: vscode.NotebookDocument, _controller: vscode.NotebookController): void {
+	private executeHandler(
+		cells: vscode.NotebookCell[], 
+		_notebook: vscode.NotebookDocument, 
+		_controller: vscode.NotebookController
+	): void {
 		for (const cell of cells) {
 			this.enqueue(cell);
 		}
