@@ -1,3 +1,6 @@
 - [ ] menu button "stop kernel", see runme as a sample
 - [ ] export as a conventional groovy file
 - [ ] FIXME proper process exit detection
+- [ ] write some tests for Eval.groovy
+- [ ] write some tests for controller
+- [ ] write some tests for serializer

@@ -1,5 +1,5 @@
 @groovy.transform.Canonical
-class Moo {
+class Cow {
     String say() {
         "MOOO!"
     }

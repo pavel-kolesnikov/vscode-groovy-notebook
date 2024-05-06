@@ -64,10 +64,9 @@ class Eval {
     private eval(String code) {
         cleanupOutput()
 
-        def output = shell.parse(code).run()
-        if (output) println String.valueOf(output).strip()
+        shell.parse(code).run()
 
-        output = String.valueOf(scriptOutputBuf).strip()
+        def output = scriptOutputBuf.toString().strip()
         if (output) println output
     }
 
