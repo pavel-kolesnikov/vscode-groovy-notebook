@@ -1,5 +1,3 @@
 - [ ] menu button "stop kernel", see runme as a sample
 - [ ] export as a conventional groovy file
-- [ ] FIXME shared kernel is used by all open groovy notebooks
-- [ ] FIXME can start parallel execution of cells (i.e. start 2 groovysh)
 - [ ] FIXME proper process exit detection

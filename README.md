@@ -20,8 +20,6 @@ Some utility methods are injected into the binding of the shell:
 
 # Limitations, a. k. a. FIXME
 
-- Signle groovy context is shared between all open notebooks.
 - No way to terminate groovy via GUI.
-- Can trigger simultaneous execution of a several cells when there's still no Groovy process. A race will happen.
 - Not properly detect groovy process exited in many cases.
-- System.exit(0) in the cell hangs the extension's controller.
+- In some cases errors are not propagated to UI & the kernel seems hang forever.

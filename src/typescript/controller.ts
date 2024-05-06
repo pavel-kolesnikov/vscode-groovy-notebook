@@ -11,76 +11,97 @@ class EvalResult {
 	}
 }
 
+class ContextManager {
+	private readonly ctx2process: Map<string, ChildProcess> = new Map();
+
+	public dispose() {
+		this.ctx2process.forEach(p => p.kill());
+	}
+
+	public get(key: string, cmd: string): ChildProcess {
+		console.log("checking for process key:", key);
+		let p = this.ctx2process.get(key);
+		if (!p) {
+			p = this.spawn(cmd);
+			this.ctx2process.set(key, p);
+			console.log("processes count:", this.ctx2process.size);			
+		}
+		return p;
+	}
+
+	private spawn(cmd: string): ChildProcess {
+		console.log("spawn new process");
+		return spawn(cmd, { shell: true });
+	}
+}
+
 export class GroovyKernel {
 	public static readonly id = 'groovy-shell-kernel';
 	public static readonly type = 'groovy-notebook';
 	public static readonly label = 'Groovy Shell';
 	public static readonly supportedLanguages = ['groovy'];
 
-	private _executionOrder = 0;
-	private readonly _controller: vscode.NotebookController;
-
-	private _process: ChildProcess | null = null;
-	private _inProgress: boolean = false;
-
 	private static readonly END_OF_TRANSMISSION = String.fromCharCode(4);
 	
-	public readonly groovyEvaluatorPath: string;
+	private executionOrder = 0;
+	private queue: Promise<void> = Promise.resolve();
+	
+	private readonly contextManager: ContextManager = new ContextManager();
+	private readonly controller: vscode.NotebookController;
+	private readonly groovyEvaluatorPath: string;
 
 	constructor(groovyEvaluatorPath: string) {
-		this._controller = vscode.notebooks.createNotebookController(GroovyKernel.id, GroovyKernel.type, GroovyKernel.label);
-		this._controller.supportedLanguages = GroovyKernel.supportedLanguages;
-		this._controller.supportsExecutionOrder = true;
-		this._controller.executeHandler = this._executeAll.bind(this);
-		this._controller.interruptHandler = this._killProcess.bind(this);
+		this.controller = vscode.notebooks.createNotebookController(GroovyKernel.id, GroovyKernel.type, GroovyKernel.label);
+		this.controller.supportedLanguages = GroovyKernel.supportedLanguages;
+		this.controller.supportsExecutionOrder = true;
+		this.controller.executeHandler = this.executeHandler.bind(this);
+		this.controller.interruptHandler = this.interruptHandler.bind(this);
+
 		this.groovyEvaluatorPath = groovyEvaluatorPath;
 	}
 
 	dispose(): void {
-		this._controller.dispose();
-		if (this._process) {
-			this._process.kill();
-		}
+		this.controller.dispose();
+		this.contextManager.dispose();
 	}
 
-	private _killProcess() {
-		this._process?.kill();
-		this._process = null;
+	private interruptHandler() {
+		this.contextManager.dispose();
 	}
 
-	private _executeAll(cells: vscode.NotebookCell[], _notebook: vscode.NotebookDocument, _controller: vscode.NotebookController): void {
-		// HACK: to serialize execution of the cells
-		let p = Promise.resolve();
+	private executeHandler(cells: vscode.NotebookCell[], _notebook: vscode.NotebookDocument, _controller: vscode.NotebookController): void {
 		for (const cell of cells) {
-			p = p.then(() => this._doExecution(cell));
+			this.enqueue(cell);
 		}
-		// HACK:end
 	}
 
-	private async _doExecution(cell: vscode.NotebookCell): Promise<void> {
-		const execution = this._controller.createNotebookCellExecution(cell);
-		execution.executionOrder = ++this._executionOrder;
+	private enqueue(cell: vscode.NotebookCell) {
+		this.queue = this.queue.then(() => this.execute(cell));
+	}
+
+	private async execute(cell: vscode.NotebookCell): Promise<void> {
+		const execution = this.controller.createNotebookCellExecution(cell);
+		execution.executionOrder = ++this.executionOrder;
 
 		try {
 			execution.start(Date.now());
 			await execution.clearOutput();
-
-			if (this._process == null || this._process.pid == undefined) {
-				await execution.appendOutput([new vscode.NotebookCellOutput([
-					vscode.NotebookCellOutputItem.text("Spawning new GroovyShell...")
-				])]);
-				this._process = await this._spawn();
-			}
-
+			
 			const code = cell.document.getText();
-			const result = await this._eval(this._process, code);
+			const ctxId = cell.document.uri.path;
+			const cmd = `groovy ${this.groovyEvaluatorPath}`;
+
+			const groovyProcess = this.contextManager.get(ctxId, cmd);
+			const result = await this.communicate(groovyProcess, code);
+
 			if (result.outputItem.data.length > 0) {
 				execution.appendOutput([new vscode.NotebookCellOutput([result.outputItem])]);
 			}
+
 			execution.end(result.success, Date.now());
 		} catch (err) {
 			console.log(err);
-			this._killProcess();
+			this.interruptHandler();
 			execution.appendOutput([new vscode.NotebookCellOutput([
 				vscode.NotebookCellOutputItem.stderr(err as string)
 			])]);
@@ -88,7 +109,7 @@ export class GroovyKernel {
 		}
 	}
 
-	private async _eval(groovyshProcess: ChildProcess, code: string): Promise<EvalResult> {
+	private async communicate(groovyshProcess: ChildProcess, code: string): Promise<EvalResult> {
 		code = code.trim();
 		if (code.length == 0) return Promise.reject("Empty input");
 
@@ -109,7 +130,7 @@ export class GroovyKernel {
 				console.log(`stderr: '${s}'`);
 				stderr += s;
 				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
-					stderr = stderr.trim().replace(GroovyKernel.END_OF_TRANSMISSION,'');
+					stderr = stderr.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
 					resolve(new EvalResult(false, vscode.NotebookCellOutputItem.stderr(stderr)));
 				}
 			});
@@ -121,7 +142,7 @@ export class GroovyKernel {
 				console.log(`stdout: '${s}'`);
 				stdout += s;
 				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
-					stdout = stdout.trim().replace(GroovyKernel.END_OF_TRANSMISSION,'');
+					stdout = stdout.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
 					resolve(new EvalResult(true, vscode.NotebookCellOutputItem.stdout(stdout)));
 				}
 			});
@@ -129,15 +150,5 @@ export class GroovyKernel {
 			console.log(`sending: '''${code}'''`);
 			groovyshProcess.stdin?.write(code + GroovyKernel.END_OF_TRANSMISSION);
 		});
-	}
-
-	private async _spawn(): Promise<ChildProcess> {
-		// see https://nodejs.org/api/child_process.html#child-process
-
-		const cmd = `groovy "${this.groovyEvaluatorPath}"`;
-		console.log(`Spawning: '$cmd'`);
-		const p = spawn(cmd, { shell: true });
-		console.log("pid:", p.pid);
-		return Promise.resolve(p);
 	}
 }

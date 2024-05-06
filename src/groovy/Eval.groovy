@@ -13,10 +13,18 @@ class Eval {
     private GroovyShell shell
 
     Eval() {
+        this.shell = resetShell()
+    }
+
+    private GroovyShell resetShell() {
         // Get printed things out from GroovyShell
+        scriptOutputBuf = new StringWriter()
         Binding shellBinding = new Binding(out: new PrintWriter(scriptOutputBuf))
-        shell = new GroovyShell(shellBinding)
-        injectMacroses(shellBinding)
+
+        def shell = new GroovyShell(shellBinding)
+        injectMacroses(shell)
+
+        return shell
     }
 
     private run(java.io.InputStream stdin) {
@@ -67,35 +75,38 @@ class Eval {
         scriptOutputBuf.buffer.length = 0
     }
 
-    private injectMacroses(Binding binding) {
-        assert shell, "Shell must be initialized first."
+    private static injectMacroses(GroovyShell shell) {
+        // It was not obviuos for me what type is the `context`. 
+        // Lets make it explicit for brewity.
+        Binding b = shell.context
+        
+        b.setVariable "p", { v ->
+            println v
+        }
 
-        binding.with {
-            setVariable "p", { v ->
-                println v
+        b.setVariable "pp", { v ->
+            def yb = new groovy.yaml.YamlBuilder()
+            yb(v)
+            println yb.toString()
+        }
+        
+        b.setVariable "addClasspath", { String path ->
+            assert new File(path).isDirectory(), "Classpath must be a directory"
+            shell.classLoader.addClasspath(path)
+        }
+        
+        b.setVariable "grab", { String... artifacts ->
+            Map[] coords = artifacts.collect { 
+                it.tokenize(":").with {[
+                    group: it[0],
+                    module: it[1],
+                    version: it[2]
+                ]}
             }
-            setVariable "pp", { v ->
-                def yb = new groovy.yaml.YamlBuilder()
-                yb(v)
-                println yb.toString()
-            }
-            setVariable "addClasspath", { String path ->
-                assert new File(path).isDirectory(), "Classpath must be a directory"
-                shell.classLoader.addClasspath(path)
-            }
-            setVariable "grab", { String... artifacts ->
-                Map[] coords = artifacts.collect { 
-                    it.tokenize(":").with {[
-                        group: it[0],
-                        module: it[1],
-                        version: it[2]
-                    ]}
-                }
-                groovy.grape.Grape.grab(
-                    classLoader: shell.classLoader,
-                    coords
-                )
-            }
+            groovy.grape.Grape.grab(
+                classLoader: shell.classLoader,
+                coords
+            )
         }
     }
 }
