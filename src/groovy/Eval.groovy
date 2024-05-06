@@ -6,7 +6,6 @@ class Eval {
     private static final String END_OF_TRANSMISSION = '\4' //ASCII EOT (end of transmission)
 
     public static void main(args) {
-        System.setSecurityManager(new NoExitSecurityManager());
         new Eval().run()
     }
 
