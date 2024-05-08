@@ -2,7 +2,6 @@ import groovy.lang.GroovyShell
 
 @groovy.transform.TypeChecked
 class Eval {
-    private static final String PROMPT = '\5' //ASCII EOT (end of transmission)
     private static final String END_OF_TRANSMISSION = '\4' //ASCII EOT (end of transmission)
 
     public static void main(args) {
@@ -35,7 +34,6 @@ class Eval {
             while (true) {
                 if (scanner.hasNext()) {
                     String code = scanner.next().strip()
-
                     try {
                         validate(code)
                         eval(code)
@@ -63,11 +61,8 @@ class Eval {
 
     private eval(String code) {
         cleanupOutput()
-
         shell.parse(code).run()
-
-        def output = scriptOutputBuf.toString().strip()
-        if (output) println output
+        return scriptOutputBuf.toString().strip()
     }
 
     private cleanupOutput() {
@@ -75,10 +70,10 @@ class Eval {
     }
 
     private static injectMacroses(GroovyShell shell) {
-        // It was not obviuos for me what type is the `context`. 
+        // It was not obviuos for me what type is the `context`.
         // Lets make it explicit for brewity.
         Binding b = shell.context
-        
+
         b.setVariable "p", { v ->
             println v
         }
@@ -88,14 +83,14 @@ class Eval {
             yb(v)
             println yb.toString()
         }
-        
+
         b.setVariable "addClasspath", { String path ->
             assert new File(path).isDirectory(), "Classpath must be a directory"
             shell.classLoader.addClasspath(path)
         }
-        
+
         b.setVariable "grab", { String... artifacts ->
-            Map[] coords = artifacts.collect { 
+            Map[] coords = artifacts.collect {
                 it.tokenize(":").with {[
                     group: it[0],
                     module: it[1],
