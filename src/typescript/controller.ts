@@ -103,18 +103,6 @@ export class GroovyKernel {
 	}
 }
 
-class EvalResult {
-	readonly success: boolean
-	readonly output: string
-	readonly error: string
-
-	constructor(success: boolean, out: string, err: string = '') {
-		this.success = success;
-		this.output = out;
-		this.error = err;
-	}
-}
-
 class GroovyProcManager {
 	private readonly processes: Map<string, GroovyProcess> = new Map();
 
