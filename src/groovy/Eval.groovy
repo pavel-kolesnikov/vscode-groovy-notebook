@@ -2,7 +2,8 @@ import groovy.lang.GroovyShell
 
 @groovy.transform.TypeChecked
 class Eval {
-    private static final String END_OF_TRANSMISSION = '\4' //ASCII EOT (end of transmission)
+    private static final String SIGNAL_READY = '\6' //ASCII ACK
+    private static final String SIGNAL_END_OF_MESSAGE = '\3' //ASCII ETX
 
     public static void main(args) {
         new Eval().run(System.in)
@@ -28,24 +29,25 @@ class Eval {
 
     private run(java.io.InputStream stdin) {
         Scanner scanner = new Scanner(stdin)
-        scanner.useDelimiter(END_OF_TRANSMISSION)
+        scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
+
+        print SIGNAL_READY
 
         try {
             while (true) {
                 if (scanner.hasNext()) {
                     String code = scanner.next().strip()
                     try {
-                        validate(code)
-                        eval(code)
+                        process(code)
+                        // N.B. If implicit return value of the script execution is needed, 
+                        //      do `print process(code)`
                     } catch (e) {
                         print "Evaluation failed:\n$e"
                     } catch (java.lang.AssertionError e) {
                         print e
                     } finally {
-                        print END_OF_TRANSMISSION
+                        print SIGNAL_END_OF_MESSAGE
                     }
-                } else {
-                    Thread.sleep(300)
                 }
             }
         } finally {
@@ -53,15 +55,14 @@ class Eval {
         }
     }
 
-    private validate(String code) {
+    private String process(String code) {
         assert code, "Code is empty"
         assert !code.isEmpty(), "Code is empty"
         assert !code.contains("System.exit"), "Code has System.exit call"
-    }
 
-    private eval(String code) {
         cleanupOutput()
         shell.parse(code).run()
+
         return scriptOutputBuf.toString().strip()
     }
 
@@ -70,15 +71,13 @@ class Eval {
     }
 
     private static injectMacroses(GroovyShell shell) {
-        // It was not obviuos for me what type is the `context`.
-        // Lets make it explicit for brewity.
-        Binding b = shell.context
+        final Binding b = shell.context
 
-        b.setVariable "p", { v ->
+        b.setVariable "p", { ...v ->
             println v
         }
 
-        b.setVariable "pp", { v ->
+        b.setVariable "pp", { ...v ->
             def yb = new groovy.yaml.YamlBuilder()
             yb(v)
             println yb.toString()

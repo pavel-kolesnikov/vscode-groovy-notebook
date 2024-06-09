@@ -26,12 +26,15 @@ async function makeSampleNotebook() {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const groovyEvaluatorPath = context.asAbsolutePath("src/groovy/Eval.groovy");
-	const kernel = new GroovyKernel(groovyEvaluatorPath);
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
-		vscode.workspace.registerNotebookSerializer(GroovyKernel.type, new GroovyContentSerializer(), { transientOutputs: true }),
-		kernel
-	);
+	try {
+		const groovyEvaluatorScriptPath = context.asAbsolutePath("src/groovy/Eval.groovy");
+		const kernel = new GroovyKernel(groovyEvaluatorScriptPath);
+		context.subscriptions.push(
+			vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
+			vscode.workspace.registerNotebookSerializer(GroovyKernel.type, new GroovyContentSerializer(), { transientOutputs: true }),
+			kernel
+		);
+	} catch (e) {
+		vscode.window.showErrorMessage(String(e));
+	}
 }

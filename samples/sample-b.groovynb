@@ -1,1 +1,1 @@
-{"cells":[{"kind":2,"language":"groovy","value":"assert b == null, \"b leaked here!\""}]}
+{"cells":[{"kind":2,"language":"groovy","value":"assert b == null, \"b leaked here!\""},{"kind":2,"language":"groovy","value":"lol = \"cus\"\np lol, lol\npp lol, lol"}]}

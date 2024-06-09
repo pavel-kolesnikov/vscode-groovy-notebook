@@ -1,34 +1,5 @@
 import * as vscode from 'vscode';
-import { ChildProcess, exec, spawn as spawn } from 'child_process';
-
-class EvalResult {
-	readonly outputItem: vscode.NotebookCellOutputItem
-	readonly success: boolean
-
-	constructor(success: boolean, outputItem: vscode.NotebookCellOutputItem) {
-		this.outputItem = outputItem;
-		this.success = success;
-	}
-}
-
-class ContextManager {
-	private readonly processes: Map<string, ChildProcess> = new Map();
-
-	public dispose() {
-		this.processes.forEach(p => p.kill());
-	}
-
-	public get(key: string, cmd: string, cwd: string): ChildProcess {
-		let p = this.processes.get(key);
-		
-		if (!p) {
-			p = spawn(cmd, { shell: true, cwd: cwd });
-			this.processes.set(key, p);
-		}
-		
-		return p;
-	}
-}
+import { GroovyProcess } from './GroovyProcess';
 
 export class GroovyKernel {
 	public static readonly id = 'groovy-shell-kernel';
@@ -37,21 +8,21 @@ export class GroovyKernel {
 	public static readonly supportedLanguages = ['groovy'];
 
 	private static readonly END_OF_TRANSMISSION = String.fromCharCode(4);
-	
+
 	private executionOrder = 0;
 	private queue: Promise<void> = Promise.resolve();
-	
-	private readonly contextManager: ContextManager = new ContextManager();
+
+	private readonly groovyProcMan: GroovyProcManager = new GroovyProcManager();
 	private readonly controller: vscode.NotebookController;
 	private readonly groovyEvaluatorPath: string;
 
 	constructor(groovyEvaluatorPath: string) {
 		this.controller = vscode.notebooks.createNotebookController(
-			GroovyKernel.id, 
-			GroovyKernel.type, 
+			GroovyKernel.id,
+			GroovyKernel.type,
 			GroovyKernel.label
 		);
-		
+
 		this.controller.supportedLanguages = GroovyKernel.supportedLanguages;
 		this.controller.supportsExecutionOrder = true;
 		this.controller.interruptHandler = this.interruptHandler.bind(this);
@@ -60,18 +31,22 @@ export class GroovyKernel {
 		this.groovyEvaluatorPath = groovyEvaluatorPath;
 	}
 
+	terminate() {
+		this.groovyProcMan.dispose();
+	}
+
 	dispose(): void {
 		this.controller.dispose();
-		this.contextManager.dispose();
+		this.groovyProcMan.dispose();
 	}
 
 	private interruptHandler() {
-		this.contextManager.dispose();
+		this.groovyProcMan.dispose();
 	}
 
 	private executeHandler(
-		cells: vscode.NotebookCell[], 
-		_notebook: vscode.NotebookDocument, 
+		cells: vscode.NotebookCell[],
+		_notebook: vscode.NotebookDocument,
 		_controller: vscode.NotebookController
 	): void {
 		for (const cell of cells) {
@@ -80,6 +55,7 @@ export class GroovyKernel {
 	}
 
 	private enqueue(cell: vscode.NotebookCell) {
+		// TRICK: force cells execution order one after another.
 		this.queue = this.queue.then(() => this.execute(cell));
 	}
 
@@ -87,28 +63,27 @@ export class GroovyKernel {
 		const execution = this.controller.createNotebookCellExecution(cell);
 		execution.executionOrder = ++this.executionOrder;
 
+		const cwd = this.noramlizeDocumentPath(cell.document.uri.path);
+		const ctxId = cell.document.uri.path;
+		const code = cell.document.getText();
+
 		try {
 			execution.start(Date.now());
 			await execution.clearOutput();
-			
-			const code = cell.document.getText();
-			const ctxId = cell.document.uri.path;
-			const cmd = `groovy "${this.groovyEvaluatorPath}"`;
 
-			// On Windows the path will be `/c:/.....` and on UNIX `//home/...`
-			// We do not need this starting `/`, take from 1 till last / (exclusive), where the file name begins.
-			const cwd = cell.document.uri.path.substring(1, cell.document.uri.path.lastIndexOf("/"));
+			const groovy = this.groovyProcMan.getOrSpawn(ctxId, this.groovyEvaluatorPath, cwd);
+			const result = await groovy.run(code)
 
-			const groovyProcess = this.contextManager.get(ctxId, cmd, cwd);
-			const result = await this.communicate(groovyProcess, code);
-
-			if (result.outputItem.data.length > 0) {
-				execution.appendOutput([new vscode.NotebookCellOutput([result.outputItem])]);
+			if (result.length > 0) {
+				execution.appendOutput([
+					new vscode.NotebookCellOutput([
+						vscode.NotebookCellOutputItem.stdout(result)
+					])
+				]);
 			}
 
-			execution.end(result.success, Date.now());
+			execution.end(true, Date.now());
 		} catch (err) {
-			this.interruptHandler();
 			execution.appendOutput([new vscode.NotebookCellOutput([
 				vscode.NotebookCellOutputItem.stderr(err as string)
 			])]);
@@ -116,46 +91,53 @@ export class GroovyKernel {
 		}
 	}
 
-	private async communicate(groovyshProcess: ChildProcess, code: string): Promise<EvalResult> {
-		groovyshProcess.removeAllListeners();
-		groovyshProcess.stdout?.removeAllListeners();
-		groovyshProcess.stderr?.removeAllListeners();
+	private noramlizeDocumentPath(path: string): string {
+		if (process.platform === "win32") {
+			// On Windows the path will be `/X:/.....`, remove this leading /
+			path = path.replace(/^[/]([a-zA-Z]:[/])/, "$1");
+		}
 
-		return new Promise((resolve, reject) => {
-			// we setup listeners first, then call the evaluation
+		// taking base path
+		path = path.substring(0, path.lastIndexOf('/'));
+		return path;
+	}
+}
 
-			groovyshProcess.once('error', reject);
-			groovyshProcess.once('close', (code: number) => {
-				groovyshProcess.stderr?.
-					map(x => x.toString()).
-					toArray().then(chunks => {
-						const err = chunks.join("");
-						reject(new Error(err + `\n\nGroovy process exited with code ${code}.`));
-					});
-			});
+class EvalResult {
+	readonly success: boolean
+	readonly output: string
+	readonly error: string
 
-			let stderr = "";
-			groovyshProcess.stderr?.on('data', (data: Buffer | string) => {
-				const s = data.toString();
+	constructor(success: boolean, out: string, err: string = '') {
+		this.success = success;
+		this.output = out;
+		this.error = err;
+	}
+}
 
-				stderr += s;
-				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
-					stderr = stderr.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
-					resolve(new EvalResult(false, vscode.NotebookCellOutputItem.stderr(stderr)));
-				}
-			});
+class GroovyProcManager {
+	private readonly processes: Map<string, GroovyProcess> = new Map();
 
-			let stdout = "";
-			groovyshProcess.stdout?.on('data', (data: Buffer | string) => {
-				const s = data.toString();
-				stdout += s;
-				if (s.includes(GroovyKernel.END_OF_TRANSMISSION)) {
-					stdout = stdout.trim().replace(GroovyKernel.END_OF_TRANSMISSION, '');
-					resolve(new EvalResult(true, vscode.NotebookCellOutputItem.stdout(stdout)));
-				}
-			});
+	public dispose() {
+		this.processes.forEach(p => p.terminate());
+	}
 
-			groovyshProcess.stdin?.write(code + GroovyKernel.END_OF_TRANSMISSION);
-		});
+	public getOrSpawn(key: string, groovyEvaluatorScript: string, cwd: string): GroovyProcess {
+		let groovy = this.processes.get(key);
+		if (groovy?.proc?.exitCode) {
+			console.log(
+				"There's a leftover process object ", groovy.proc.pid,
+				'for key', key,
+				'exit code', groovy.proc.exitCode
+			)
+			groovy = undefined
+		}
+		if (!groovy) {
+			groovy = new GroovyProcess()
+			groovy.useArgs(groovyEvaluatorScript)
+			groovy.useCwd(cwd)
+			this.processes.set(key, groovy)
+		}
+		return groovy;
 	}
 }

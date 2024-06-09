@@ -6,7 +6,7 @@
     {
       "type": "npm",
       "script": "watch",
-      "problemMatcher": ["$tsc-watch", "$ts-checker-webpack-watch"],
+      "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {
         "reveal": "never"
@@ -19,7 +19,7 @@
     {
       "type": "npm",
       "script": "compile",
-      "problemMatcher": ["$tsc", "$ts-checker-webpack"],
+      "problemMatcher": ["$tsc"],
       "group": "build"
     }
   ]

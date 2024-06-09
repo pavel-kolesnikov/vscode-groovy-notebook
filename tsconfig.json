@@ -1,9 +1,11 @@
 {
 	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2020",
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
+		"allowSyntheticDefaultImports": true,
+		"target": "es2022",
 		"lib": [
-			"es2020"
+			"es2022"
 		],
 		"outDir": "out",
 		"sourceMap": true,
