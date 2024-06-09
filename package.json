@@ -48,7 +48,7 @@
     "compile": "tsc -b",
     "watch": "tsc -b --watch",
     "lint": "eslint src --ext ts",
-    "pack": "node_modules/@vscode/vsce/vsce package --pre-release --allow-missing-repository",
+    "pack": "node node_modules/@vscode/vsce/vsce package --pre-release --allow-missing-repository",
     "vscode:prepublish": "npm run compile",
     "dogfood": "code --install-extension groovy-notebook-1.0.0.vsix"
   },
