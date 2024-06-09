@@ -58,7 +58,7 @@ class Eval {
     private String process(String code) {
         assert code, "Code is empty"
         assert !code.isEmpty(), "Code is empty"
-        assert !code.contains("System.exit"), "Code has System.exit call"
+        assert !code.contains("System.exit"), "Refusing to call `System.exit`"
 
         cleanupOutput()
         shell.parse(code).run()
