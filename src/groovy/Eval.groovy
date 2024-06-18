@@ -74,7 +74,7 @@ class Eval {
         final Binding b = shell.context
 
         b.setVariable "p", { ...v ->
-            println v
+            println v.join(" ")
         }
 
         b.setVariable "pp", { ...v ->
