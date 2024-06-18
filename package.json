@@ -8,6 +8,10 @@
     "name": "Pavel Kolesnikov",
     "email": "pvl.kolesnikov@gmail.com"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
+  },
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -48,7 +52,7 @@
     "compile": "tsc -b",
     "watch": "tsc -b --watch",
     "lint": "eslint src --ext ts",
-    "pack": "node node_modules/@vscode/vsce/vsce package --pre-release --allow-missing-repository",
+    "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
     "dogfood": "code --install-extension groovy-notebook-1.0.0.vsix"
   },
