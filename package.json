@@ -27,7 +27,7 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onNotebook:groovy-notebook"
+    "onCommand:notebook-serializer-sample.createJsonNotebook"
   ],
   "contributes": {
     "configuration": {
