@@ -3,18 +3,18 @@
   "displayName": "Groovy Notebook",
   "description": "A basic Groovy notebook experience",
   "icon": "assets/notebook.png",
-  "publisher": "Pavel Kolesnikov",
+  "publisher": "pavel-kolesnikov",
   "author": {
     "name": "Pavel Kolesnikov",
-    "email": "pvl.kolesnikov@gmail.com"
+    "email": "170665+pavel-kolesnikov@users.noreply.github.com"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Notebooks"
@@ -30,10 +30,24 @@
     "onNotebook:groovy-notebook"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Groovy Notebook",
+      "properties": {
+        "groovyNotebook.groovyPath": {
+          "type": "string",
+          "default": "groovy",
+          "description": "Path to the Groovy binary. Defaults to 'groovy' which assumes it's in PATH."
+        }
+      }
+    },
     "commands": [
       {
         "command": "groovy-notebook.createSampleNotebook",
         "title": "Create Sample Groovy Notebook"
+      },
+      {
+        "command": "groovy-notebook.terminateKernel",
+        "title": "Terminate Groovy Kernel"
       }
     ],
     "notebooks": [
@@ -46,7 +60,16 @@
           }
         ]
       }
-    ]
+    ],
+    "menus": {
+      "notebook/toolbar": [
+        {
+          "command": "groovy-notebook.terminateKernel",
+          "group": "groovy-notebook",
+          "when": "notebookType == groovy-notebook"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -b",
@@ -62,7 +85,7 @@
     "@types/vscode": "^1",
     "@typescript-eslint/eslint-plugin": "^6",
     "@typescript-eslint/parser": "^6",
-    "@vscode/vsce": "^2.27.0",
+    "@vscode/vsce": "^3.3.2",
     "eslint": "^7",
     "mocha": "^10",
     "typescript": "^5"

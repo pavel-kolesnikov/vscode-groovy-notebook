@@ -1,130 +1,79 @@
-import { ChildProcess, execSync, spawn } from 'child_process';
-import { constants as fsConst, accessSync } from 'fs';
+import { ProcessManager, ProcessResult, ProcessError, ProcessConfig } from './ProcessManager';
+import * as vscode from 'vscode';
 
+export { ProcessResult, ProcessError };
+
+/**
+ * A class that manages the execution of Groovy code through a child process.
+ * Provides methods to run Groovy code and handle process lifecycle.
+ */
 export class GroovyProcess {
-    proc: ChildProcess | null = null
+    private processManager: ProcessManager;
 
-    private static SIGNAL_READY = String.fromCharCode(6);
-    private static SIGNAL_END_OF_MESSAGE = String.fromCharCode(3);
-
-    private cwd: string = ''
-    private cmd = GroovyProcess._findGroovyPath()
-    private args = [
-        "/home/pkolesnikov/Documents/gh/vscode-groovy-notebook/src/groovy/Eval.groovy"
-    ]
-
-    useCmd(pathToBinary: string) {
-        this.cmd = pathToBinary;
+    constructor() {
+        const cmd = this.findGroovyPath();
+        console.log('Initializing GroovyProcess with command:', cmd);
+        const config: ProcessConfig = {
+            cmd,
+            args: [vscode.workspace.getConfiguration('groovyNotebook').get('groovyPath', 'groovy')],
+            cwd: ''
+        };
+        console.log('Process configuration:', config);
+        this.processManager = new ProcessManager(config);
     }
 
-    useArgs(...args: string[]) {
-        this.args = args;
-    }
-
-    useCwd(cwd: string) {
-        this.cwd = cwd;
-    }
-
-    terminate() {
-        if (!this.proc) return;
-        this.proc.kill();
-    }
-
-    async run(code: string): Promise<string> {
-        const EOM = GroovyProcess.SIGNAL_END_OF_MESSAGE;
-        const p = await this._getOrSpawn();
-
-        return new Promise((resolve, reject) => {
-            function onExit(code: number) {
-                reject(new Error("process exited with code " + code));
-            }
-
-            const buffers: Buffer[] = [];
-            function readStdout(chunk: Buffer) {
-                buffers.push(chunk);
-
-                if (chunk.includes(EOM)) {
-                    p.stdout?.removeAllListeners();
-                    p.removeAllListeners();
-                    const text = Buffer.
-                        concat(buffers).
-                        toString().
-                        trim().
-                        replace(EOM, '');
-                    resolve(text);
-                }
-            }
-
-            p.once("exit", onExit);
-            p.stdout?.on("data", readStdout);
-            p.stdin?.write(code + EOM);
+    /**
+     * Sets a custom path to the Groovy binary
+     */
+    public useCmd(pathToBinary: string): void {
+        console.log('Setting custom Groovy binary path:', pathToBinary);
+        this.processManager = new ProcessManager({
+            ...this.processManager['config'],
+            cmd: pathToBinary
         });
     }
 
-    private static _findGroovyPath(): string {
-        let cmd = "which groovy";
-
-        if (process.platform == "win32") {
-            cmd = "where groovy";
-        }
-
-        const path = execSync(cmd).toString().trim().split(/\r?\n/)[0];
-        
-        // check we're able to execute given file
-        accessSync(path, fsConst.X_OK);
-
-        return path;
-    }
-
-    private _spawn(cmd: string, args: string[]) {
-        if (args.length == 0) throw new Error("Missing arguments to groovy executable");
-
-        console.log('Spawning new Groovy process:', cmd, args);
-
-        const groovy = spawn(cmd, args, { cwd: this.cwd });
-
-        for (const event of [`exit`, `SIGINT`, `SIGUSR1`, `SIGUSR2`, `uncaughtException`, `SIGTERM`]) {
-            process.on(event, () => {
-                console.log('Groovy process dies, pid', process.pid);
-                groovy.kill();
-            });
-        }
-
-        return groovy;
-    }
-
-    private _getOrSpawn(): Promise<ChildProcess> {
-        if (this.proc && this.proc.exitCode == null) {
-            return Promise.resolve(this.proc);
-        }
-
-        return new Promise((resolve, reject) => {
-            this.proc = this._spawn(this.cmd, this.args);
-            const stdout = this.proc.stdout;
-            if (!stdout) {
-                reject(new Error("Groovy's stdout is unexpectedly closed. Process dead?"));
-                return;
-            }
-
-            console.log("Waiting Groovy process ready...");
-
-            const timeoutId = setTimeout(() => {
-                this.terminate();
-                reject(new Error("Timeout waiting Groovy initialization"));
-            }, 30_000);
-
-            stdout.on("data", chunk => {
-                if (chunk.includes(GroovyProcess.SIGNAL_READY)) {
-                    stdout.removeAllListeners();
-                    clearTimeout(timeoutId);
-                    console.log("Groovy is ready");
-                    if (this.proc) {
-                        resolve(this.proc);
-                    } else {
-                        reject(new Error("Code error: No Groovy process"));
-                    }
-                }
-            });
+    /**
+     * Sets custom arguments for the Groovy process
+     */
+    public useArgs(...args: string[]): void {
+        console.log('Setting custom Groovy arguments:', args);
+        this.processManager = new ProcessManager({
+            ...this.processManager['config'],
+            args
         });
+    }
+
+    /**
+     * Sets the working directory for the Groovy process
+     */
+    public useCwd(cwd: string): void {
+        console.log('Setting custom working directory:', cwd);
+        this.processManager = new ProcessManager({
+            ...this.processManager['config'],
+            cwd
+        });
+    }
+
+    /**
+     * Terminates the current Groovy process if it's running
+     */
+    public async terminate(): Promise<void> {
+        await this.processManager.dispose();
+    }
+
+    /**
+     * Runs the provided Groovy code and returns the execution result
+     */
+    public async run(code: string): Promise<ProcessResult> {
+        return this.processManager.run(code);
+    }
+
+    public interrupt(): void {
+        this.processManager.emit('interrupt');
+    }
+
+    private findGroovyPath(): string {
+        return vscode.workspace.getConfiguration('groovyNotebook').get('groovyPath', 'groovy');
     }
 }

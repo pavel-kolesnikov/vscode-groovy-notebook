@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const kernel = new GroovyKernel(groovyEvaluatorScriptPath);
 		context.subscriptions.push(
 			vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
+			vscode.commands.registerCommand('groovy-notebook.terminateKernel', () => kernel.terminate()),
 			vscode.workspace.registerNotebookSerializer(GroovyKernel.type, new GroovyContentSerializer(), { transientOutputs: true }),
 			kernel
 		);

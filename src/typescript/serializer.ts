@@ -53,6 +53,8 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 			});
 		}
 
-		return new TextEncoder().encode(JSON.stringify(contents));
+		// Pretty print the JSON with 2 spaces indentation
+		const jsonString = JSON.stringify(contents, null, 2);
+		return new TextEncoder().encode(jsonString);
 	}
 }
