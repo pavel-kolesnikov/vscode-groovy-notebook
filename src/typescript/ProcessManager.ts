@@ -225,16 +225,18 @@ export class ProcessManager extends EventEmitter {
     }
 
     private createProcess(): ChildProcess {
-        console.log('Creating process with env:', {
+        const config = vscode.workspace.getConfiguration('groovyNotebook');
+        const javaHome = config.get<string>('javaHome') || process.env.JAVA_HOME;
+        
+        const env = {
             ...process.env,
-            JAVA_HOME: process.env.JAVA_HOME
-        });
+            JAVA_HOME: javaHome
+        };
+
+        console.log('Creating process with env:', env);        
         return spawn(this.config.cmd, this.config.args, {
             cwd: this.config.cwd,
-            env: {
-                ...process.env,
-                JAVA_HOME: process.env.JAVA_HOME
-            }
+            env: env
         });
     }
 

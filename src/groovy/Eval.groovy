@@ -150,7 +150,26 @@ class MacroHelper {
         b.setVariable "tt", MacroHelper.&tt
 
         log.info "Macro injection complete"
+
+        log.info "Loading groovysh.rc..."
+        loadGroovyshRc(shell)
     }
+
+    private static void loadGroovyshRc(GroovyShell shell) {
+        def groovyshRc = new File("${System.getProperty('user.home')}/.groovy/groovysh.rc")
+        if (groovyshRc.exists()) {
+            log.info "Reading groovysh.rc from ${groovyshRc.absolutePath}"
+            try {
+                shell.evaluate(groovyshRc.text)
+                log.info "Successfully executed groovysh.rc"
+            } catch (Exception e) {
+                log.warning "Failed to execute groovysh.rc: ${e.message}"
+            }
+        } else {
+            log.info "No groovysh.rc found at ${groovyshRc.absolutePath}"
+        }
+    }
+
 
     private static void p(Object... v) {
         println v.collect { String.valueOf(it) }.join(' ')

@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
   },
-  "version": "1.1.0",
+  "version": "1.1.1",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -37,6 +37,11 @@
           "type": "string",
           "default": "groovy",
           "description": "Path to the Groovy binary. Defaults to 'groovy' which assumes it's in PATH."
+        },
+        "groovyNotebook.javaHome": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Java installation directory. If not set, will try to use JAVA_HOME environment variable."
         }
       }
     },
@@ -77,7 +82,7 @@
     "lint": "eslint src --ext ts",
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
-    "dogfood": "code --install-extension groovy-notebook-1.0.0.vsix"
+    "dogfood": "code --install-extension groovy-notebook-*.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^8",
