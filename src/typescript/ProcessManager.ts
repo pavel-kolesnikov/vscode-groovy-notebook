@@ -74,11 +74,25 @@ export class ProcessManager extends EventEmitter {
     }
 
     public async run(code: string): Promise<ProcessResult> {
+        console.log('[ProcessManager] Starting code execution');
         try {
             this.currentProcess = await this.acquire();
+            console.log('[ProcessManager] Process acquired, executing code');
             return await this.executeCode(code);
+        } catch (error: unknown) {
+            console.error('[ProcessManager] Error during execution:', error);
+            // If the error is about clean exit without output, try to restart the process
+            if (error instanceof Error && error.message === 'Process exited cleanly without output') {
+                console.log('[ProcessManager] Attempting to restart process');
+                this.currentProcess = null;
+                this.isReady = false;
+                this.currentProcess = await this.acquire();
+                return await this.executeCode(code);
+            }
+            throw error;
         } finally {
             if (this.currentProcess) {
+                console.log('[ProcessManager] Releasing process');
                 await this.release(this.currentProcess);
                 this.currentProcess = null;
             }
@@ -86,34 +100,54 @@ export class ProcessManager extends EventEmitter {
     }
 
     public async dispose(): Promise<void> {
+        this.isTerminated = true;
+        this.isReady = false;
         const disposePromises = this.pool.map(process => this.terminateProcess(process));
         await Promise.all(disposePromises);
         this.pool = [];
         this.processRequestQueue = [];
+        if (this.idleTimeout) {
+            clearTimeout(this.idleTimeout);
+            this.idleTimeout = null;
+        }
+        if (this.currentProcess) {
+            await this.terminateProcess(this.currentProcess);
+            this.currentProcess = null;
+        }
     }
 
     private async spawn(): Promise<ChildProcess> {
+        console.log('[ProcessManager] Spawning new process');
         return new Promise((resolve, reject) => {
+            if (this.isTerminated) {
+                console.error('[ProcessManager] Cannot spawn: process manager is terminated');
+                reject(new Error('Process manager is terminated'));
+                return;
+            }
+
             const process = this.createProcess();
+            console.log('[ProcessManager] Process created, waiting for initialization');
             const stdout = process.stdout;
             const stderr = process.stderr;
 
             if (!stdout) {
-                console.error('Process stdout is unexpectedly closed');
+                console.error('[ProcessManager] Process stdout is unexpectedly closed');
                 this.terminateProcess(process);
                 reject(new Error("Process stdout is unexpectedly closed"));
                 return;
             }
 
             const timeoutId = setTimeout(() => {
-                console.error('Process initialization timeout after', ProcessManager.INITIALIZATION_TIMEOUT, 'ms');
+                console.error('[ProcessManager] Process initialization timeout');
                 this.terminateProcess(process);
                 reject(new Error('Timeout waiting for process initialization'));
             }, ProcessManager.INITIALIZATION_TIMEOUT);
 
             const onData = (chunk: Buffer) => {
                 const data = chunk.toString();
+                console.log('[ProcessManager] Received data:', data);
                 if (data.includes(ProcessManager.SIGNAL_READY)) {
+                    console.log('[ProcessManager] Process is ready');
                     stdout.removeListener('data', onData);
                     clearTimeout(timeoutId);
                     this.isReady = true;
@@ -123,36 +157,67 @@ export class ProcessManager extends EventEmitter {
                 }
             };
 
+            const onError = (error: Error) => {
+                console.error('[ProcessManager] Process error:', error);
+                stdout.removeListener('data', onData);
+                clearTimeout(timeoutId);
+                this.terminateProcess(process);
+                reject(error);
+            };
+
             if (stderr) {
                 stderr.on('data', (chunk: Buffer) => {
-                    console.error('Process stderr:', chunk.toString());
+                    console.error('[ProcessManager] Process stderr:', chunk.toString());
                 });
             }
 
+            process.on('error', onError);
             stdout.on('data', onData);
         });
     }
 
     private async executeCode(code: string): Promise<ProcessResult> {
+        console.log('[ProcessManager] Executing code');
         return new Promise((resolve, reject) => {
             if (!this.currentProcess) {
+                console.error('[ProcessManager] No process available for execution');
                 reject(new Error('No process available'));
+                return;
+            }
+
+            if (this.isTerminated) {
+                console.error('[ProcessManager] Cannot execute: process manager is terminated');
+                reject(new Error('Process manager is terminated'));
                 return;
             }
 
             const stdoutChunks: Buffer[] = [];
             const stderrChunks: Buffer[] = [];
             let exitCode: number | null = null;
+            let hasReceivedOutput = false;
 
             const cleanup = () => {
+                console.log('[ProcessManager] Cleaning up process listeners');
                 this.currentProcess?.stdout?.removeAllListeners();
                 this.currentProcess?.stderr?.removeAllListeners();
                 this.currentProcess?.removeAllListeners();
             };
 
             const onExit = (code: number | null) => {
+                console.log('[ProcessManager] Process exited with code:', code);
                 exitCode = code;
                 cleanup();
+                
+                // If we haven't received any output and the process exited cleanly,
+                // it means we need to restart the process
+                if (!hasReceivedOutput && code === 0) {
+                    console.log('[ProcessManager] Process exited cleanly without output, will restart');
+                    this.currentProcess = null;
+                    this.isReady = false;
+                    reject(new Error('Process exited cleanly without output'));
+                    return;
+                }
+
                 if (code !== null && code !== 0) {
                     const error = this.createError(
                         `Process exited with code ${code}`,
@@ -166,6 +231,7 @@ export class ProcessManager extends EventEmitter {
             };
 
             const onError = (error: Error) => {
+                console.error('[ProcessManager] Process execution error:', error);
                 cleanup();
                 reject(this.createError(
                     error.message,
@@ -176,8 +242,11 @@ export class ProcessManager extends EventEmitter {
             };
 
             const onStdout = (chunk: Buffer) => {
+                console.log('[ProcessManager] Received stdout chunk');
+                hasReceivedOutput = true;
                 stdoutChunks.push(chunk);
                 if (chunk.includes(ProcessManager.SIGNAL_END_OF_MESSAGE)) {
+                    console.log('[ProcessManager] Received end of message signal');
                     cleanup();
                     const stdout = Buffer.concat(stdoutChunks)
                         .toString()
@@ -189,10 +258,13 @@ export class ProcessManager extends EventEmitter {
             };
 
             const onStderr = (chunk: Buffer) => {
+                console.log('[ProcessManager] Received stderr chunk:', chunk.toString());
+                hasReceivedOutput = true;
                 stderrChunks.push(chunk);
             };
 
             const timeout = setTimeout(() => {
+                console.error('[ProcessManager] Execution timeout');
                 cleanup();
                 reject(this.createError(
                     'Execution timeout',
@@ -202,21 +274,13 @@ export class ProcessManager extends EventEmitter {
                 ));
             }, ProcessManager.EXECUTION_TIMEOUT);
 
-            this.currentProcess.once('exit', onExit);
-            this.currentProcess.once('error', onError);
+            this.currentProcess.on('exit', onExit);
+            this.currentProcess.on('error', onError);
             this.currentProcess.stdout?.on('data', onStdout);
             this.currentProcess.stderr?.on('data', onStderr);
 
-            this.currentProcess.stdin?.write(code + ProcessManager.SIGNAL_END_OF_MESSAGE, (error) => {
-                if (error) {
-                    clearTimeout(timeout);
-                    cleanup();
-                    reject(this.createError(
-                        `Failed to write to stdin: ${error.message}`,
-                        'STDIN_ERROR'
-                    ));
-                }
-            });
+            console.log('[ProcessManager] Writing code to process stdin');
+            this.currentProcess.stdin?.write(code + ProcessManager.SIGNAL_END_OF_MESSAGE);
         });
     }
 

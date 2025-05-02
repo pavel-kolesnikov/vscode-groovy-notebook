@@ -71,6 +71,13 @@ export class GroovyKernel {
 	}
 
 	private async execute(cell: vscode.NotebookCell): Promise<void> {
+		// If there's already an execution in progress, end it first
+		if (this.currentCellExecution) {
+			this.currentCellExecution.end(false, Date.now());
+			this.currentCellExecution = null;
+		}
+
+		// Create new execution and set it as current
 		const execution = this.controller.createNotebookCellExecution(cell);
 		this.currentCellExecution = execution;
 		execution.executionOrder = ++this.executionOrder;
@@ -80,11 +87,15 @@ export class GroovyKernel {
 		const code = cell.document.getText();
 
 		try {
+			// Start execution and clear output
 			execution.start(Date.now());
-			await execution.clearOutput();
+			execution.clearOutput();
 
+			// Get or spawn Groovy process
 			const groovy = this.groovyProcMan.getOrSpawn(ctxId, this.groovyEvaluatorPath, cwd);
 			this.currentGroovyProcess = groovy;
+
+			// Run the code
 			const result = await groovy.run(code);
 
 			// Check if execution was interrupted before appending output
@@ -116,7 +127,7 @@ export class GroovyKernel {
 				const stderr = processError.stderr || '';
 				const stdout = processError.stdout || '';
 
-				if (stdout.length > 0) {
+				if (stdout && stdout.trim().length > 0) {
 					execution.appendOutput([
 						new vscode.NotebookCellOutput([
 							vscode.NotebookCellOutputItem.stdout(stdout)
@@ -133,6 +144,7 @@ export class GroovyKernel {
 				execution.end(false, Date.now());
 			}
 		} finally {
+			// Only clear current execution if it's the same one we started
 			if (this.currentCellExecution === execution) {
 				this.currentCellExecution = null;
 			}
