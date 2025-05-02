@@ -43,6 +43,11 @@
     {
       "kind": 2,
       "language": "groovy",
+      "value": "dir new Cow()"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
       "value": "import groovy.transform.TypeChecked\n\n@TypeChecked(extensions = 'groovy.typecheckers.RegexChecker')\ndef testRegexChecker() {\n    def date = '2022-04-03'\n\n    assert date ==~ /(\\d{4})-(\\d{1,2})-(\\d{1,2}/\n}"
     },
     {
@@ -84,6 +89,16 @@
       "kind": 2,
       "language": "groovy",
       "value": "pp response"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "ph = ProcessHandle.current()\n\npp ph"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "dir ProcessHandle.current()"
     },
     {
       "kind": 2,

@@ -1,5 +1,6 @@
 import java.util.logging.ConsoleHandler
 import java.util.logging.SimpleFormatter
+import java.lang.reflect.Method
 
 import groovy.grape.Grape
 import groovy.lang.GroovyShell
@@ -149,6 +150,9 @@ class MacroHelper {
         log.info "Injecting 'tt' macro..."
         b.setVariable "tt", MacroHelper.&tt
 
+        log.info "Injecting 'dir' macro..."
+        b.setVariable "dir", MacroHelper.&dir
+
         log.info "Macro injection complete"
 
         log.info "Loading groovysh.rc..."
@@ -176,9 +180,11 @@ class MacroHelper {
     }
 
     private static void pp(Object... v) {
-        def yb = new YamlBuilder()
-        yb(v)
-        println yb.toString()
+        if (v.size() == 1) {
+            println PrettyPrintHelper.toYaml(v[0])
+        } else {
+            println PrettyPrintHelper.toYaml(v)
+        }
     }
 
     private static void addClasspath(GroovyShell shell, String path) {
@@ -200,7 +206,6 @@ class MacroHelper {
         )
     }
     
-
     private static void tt(Object data, String columnsToRender = null) {
         assert data instanceof List<Map<Object,Object>>, "Data must be a List of Maps"
         def dataList = data as List<Map<Object,Object>>
@@ -210,40 +215,182 @@ class MacroHelper {
             return
         }
 
-        // Convert data to string format and validate
         def stringData = dataList.grep().collect { row ->
             row.collectEntries { k, v -> [k.toString(), v?.toString() ?: ''] }
         }
-        
-        // Determine columns to display
         def allColumns = stringData*.keySet().flatten().unique()
         def columns = columnsToRender?.tokenize() ?: allColumns
-        
-        // Calculate column widths
         def columnWidths = columns.collectEntries { col ->
             def maxWidth = Math.max(
                 col.length(),
-                stringData.collect { it[col]?.length() ?: 0 }.max() ?: 0
+                stringData.collect { (it[col]?.toString()?.split('\n') ?: ['']).collect { l -> l.length() }.max() ?: 0 }.max() ?: 0
             )
-            return [col, maxWidth]
+            [col, maxWidth]
         }
 
-        // Print table
-        def printRow = { values -> 
-            println values.collect { col, width -> 
-                (col ?: '').padRight(width)
-            }.join(' | ')
+        def printRowMultiline = { List<String> values, Map<String, Integer> widths ->
+            def cellLines = values.withIndex().collect { val, idx ->
+                (val ?: '').toString().split('\n')
+            }
+            def maxLines = cellLines.collect { it.size() }.max() ?: 1
+            (0..<maxLines).each { lineIdx ->
+                println cellLines.withIndex().collect { lines, idx ->
+                    def col = columns[idx]
+                    (lines.size() > lineIdx ? lines[lineIdx] : '').padRight(widths[col])
+                }.join('\t')
+            }
         }
 
         // Header
-        printRow(columns.collectEntries { [it, columnWidths[it]] })
-        printRow(columns.collectEntries { [it, columnWidths[it]].collectEntries { k, v -> [k, '-'.multiply(v)] } })
+        printRowMultiline(columns, columnWidths)
 
         // Data rows
         stringData.each { row ->
-            printRow(columns.collectEntries { [it, columnWidths[it]] }.collectEntries { col, width ->
-                [row[col] ?: '', width]
-            })
+            printRowMultiline(columns.collect { row[it] ?: '' }, columnWidths)
         }
     }
+
+    static String dir(obj) {
+        def clazz = obj.getClass()
+        def rows = []
+
+        def getInheritanceDepth = { Class<?> c ->
+            int depth = 0
+            def current = c
+            while (current != null) {
+                depth++
+                current = current.superclass
+            }
+            depth
+        }
+
+        def getDeclaringClassDepth = { Class<?> declaringClass ->
+            def current = clazz
+            int depth = 0
+            while (current != null && current != declaringClass) {
+                depth++
+                current = current.superclass
+            }
+            depth
+        }
+
+        clazz.declaredFields.findAll { !it.synthetic }.each {
+            rows << [
+                name: it.name,
+                type: 'field',
+                signature: it.type.simpleName,
+                from: it.declaringClass.simpleName,
+                depth: getDeclaringClassDepth(it.declaringClass)
+            ]
+        }
+        
+        obj.properties.each { k, v ->
+            def propDecl = null
+            try {
+                propDecl = clazz.getDeclaredField(k)?.declaringClass
+            } catch (ignored) {
+                def getter = clazz.methods.find { m -> m.name == "get"+k.capitalize() && m.parameterCount == 0 }
+                propDecl = getter?.declaringClass
+            }
+            if (!propDecl) propDecl = clazz
+            rows << [
+                name: k,
+                type: 'property',
+                signature: v?.getClass()?.simpleName ?: 'null',
+                from: propDecl.simpleName,
+                depth: getDeclaringClassDepth(propDecl)
+            ]
+        }
+        
+        def methodRows = clazz.methods.collect {[
+            name: it.name,
+            type: 'method',
+            signature: formatMethodSignature(it),
+            from: it.declaringClass.simpleName,
+            depth: getDeclaringClassDepth(it.declaringClass)
+        ]}
+        
+        methodRows = methodRows.unique { [it.name, it.type, it.from] }
+        methodRows = methodRows.findAll { !it.name.contains('$') }
+        def isBean = { n -> n ==~ /^(get|set|is)[A-Z].*/ }
+        def beanMethods = methodRows.findAll { isBean(it.name) }
+        def otherMethods = methodRows.findAll { !isBean(it.name) }
+
+        rows += beanMethods + otherMethods
+        rows = rows.unique { [it.name, it.type, it.from] }
+        rows = rows.findAll { !it.name.contains('$') }
+        
+        rows = rows.sort { a, b -> 
+            a.depth <=> b.depth ?: a.type <=> b.type ?: a.name.toLowerCase() <=> b.name.toLowerCase() ?: a.name <=> b.name
+        }
+        
+        p "$clazz:"
+        tt(rows, 'type name from signature')
+    }
+
+    private static String formatMethodSignature(Method method) {
+        def defaultPackages = [
+            'java.lang.',
+            'java.util.',
+            'java.io.',
+            'java.net.',
+            'groovy.lang.',
+            'groovy.util.',
+            'java.math.'
+        ]
+        def simplify = { String fqcn ->
+            if (!fqcn) return fqcn
+            for (pkg in defaultPackages) {
+                if (fqcn.startsWith(pkg)) {
+                    return fqcn.substring(pkg.length())
+                }
+            }
+            return fqcn
+        }
+        def returnType = simplify(method.returnType.name.replace('$', '.').tokenize('.').join('.'))
+        def params = method.parameterTypes.collect { pt ->
+            simplify(pt.name.replace('$', '.').tokenize('.').join('.'))
+        }.join(', ')
+        def exceptions = method.exceptionTypes.collect { et ->
+            simplify(et.name.replace('$', '.').tokenize('.').join('.'))
+        }
+        def throwsClause = exceptions ? ' throws ' + exceptions.join(', ') : ''
+        return "${returnType} ${method.name}(${params})${throwsClause}"
+    }
 } 
+
+class PrettyPrintHelper {
+    static String toYaml(obj) {
+        def yb = new groovy.yaml.YamlBuilder()
+        yb(stripTransients(obj))
+        return yb.toString()
+    }
+
+    private static Object stripTransients(obj) {
+        if (obj == null) return null
+        if (obj instanceof Map) {
+            return obj.collectEntries { k, v -> [k, stripTransients(v)] }
+        }
+        if (obj instanceof List) {
+            return obj.collect { stripTransients(it) }
+        }
+        def clazz = obj.getClass()
+        if (clazz.isPrimitive() || obj instanceof Number || obj instanceof CharSequence || obj instanceof Boolean || obj instanceof Enum) {
+            return obj
+        }
+        def pkg = clazz.package?.name
+        if (pkg?.startsWith('java.') || pkg?.startsWith('javax.')) {
+            return obj
+        }
+        def result = [:]
+        clazz.declaredFields.findAll { f ->
+            !java.lang.reflect.Modifier.isTransient(f.modifiers) &&
+            !java.lang.reflect.Modifier.isStatic(f.modifiers) &&
+            !(f.name.contains('$'))
+        }.each { f ->
+            f.accessible = true
+            result[f.name] = stripTransients(f.get(obj))
+        }
+        return result
+    }
+}

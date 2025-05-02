@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
   },
-  "version": "1.1.1",
+  "version": "1.2.0",
   "engines": {
     "vscode": "^1.90.0"
   },
