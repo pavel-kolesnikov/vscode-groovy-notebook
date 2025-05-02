@@ -83,16 +83,6 @@
     {
       "kind": 2,
       "language": "groovy",
-      "value": "url = 'https://randomuser.me/api/?results=10'\nresponse = new groovy.json.JsonSlurper().parse(url.toURL())"
-    },
-    {
-      "kind": 2,
-      "language": "groovy",
-      "value": "pp response"
-    },
-    {
-      "kind": 2,
-      "language": "groovy",
       "value": "ph = ProcessHandle.current()\n\npp ph"
     },
     {
@@ -103,7 +93,22 @@
     {
       "kind": 2,
       "language": "groovy",
-      "value": "tt response.results.name"
+      "value": "url = 'https://randomuser.me/api/?results=10'\nresponse = new groovy.json.JsonSlurper().parse(url.toURL())"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "pp response"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "tt response.results"
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "tt response.results.location"
     }
   ]
 }

@@ -207,6 +207,19 @@ class MacroHelper {
     }
     
     private static void tt(Object data, String columnsToRender = null) {
+        if (data instanceof List<Object> && !(data instanceof List<Map<Object,Object>>)) {
+            tt(data.collect { obj -> 
+                obj.properties.findAll { k, v -> 
+                    !k.startsWith('class') && 
+                    !k.startsWith('metaClass') && 
+                    !k.startsWith('this$') && 
+                    !k.startsWith('owner') && 
+                    !k.startsWith('delegate') && 
+                    !k.startsWith('binding')
+                }
+            }, columnsToRender)
+            return
+        }
         assert data instanceof List<Map<Object,Object>>, "Data must be a List of Maps"
         def dataList = data as List<Map<Object,Object>>
 
@@ -216,7 +229,7 @@ class MacroHelper {
         }
 
         def stringData = dataList.grep().collect { row ->
-            row.collectEntries { k, v -> [k.toString(), v?.toString() ?: ''] }
+            row.collectEntries { k, v -> [k.toString(), String.valueOf(v) ?: '-'] }
         }
         def allColumns = stringData*.keySet().flatten().unique()
         def columns = columnsToRender?.tokenize() ?: allColumns
