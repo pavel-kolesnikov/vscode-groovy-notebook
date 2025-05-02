@@ -206,26 +206,15 @@ class MacroHelper {
         )
     }
     
-    private static void tt(Object data, String columnsToRender = null) {
-        if (data instanceof List<Object> && !(data instanceof List<Map<Object,Object>>)) {
-            tt(data.collect { obj -> 
-                obj.properties.findAll { k, v -> 
-                    !k.startsWith('class') && 
-                    !k.startsWith('metaClass') && 
-                    !k.startsWith('this$') && 
-                    !k.startsWith('owner') && 
-                    !k.startsWith('delegate') && 
-                    !k.startsWith('binding')
-                }
-            }, columnsToRender)
-            return
-        }
-        assert data instanceof List<Map<Object,Object>>, "Data must be a List of Maps"
-        def dataList = data as List<Map<Object,Object>>
+    private static void tt(List<Object> data, String columnsToRender = null) {
+        println renderTable(data, columnsToRender)
+    }
+
+    private static String renderTable(List<Map> data, String columnsToRender = null) {
+        def dataList = convertToMapList(data)
 
         if (!dataList) {
-            println "<No data to display>"
-            return
+            return ""
         }
 
         def stringData = dataList.grep().collect { row ->
@@ -246,23 +235,22 @@ class MacroHelper {
                 (val ?: '').toString().split('\n')
             }
             def maxLines = cellLines.collect { it.size() }.max() ?: 1
-            (0..<maxLines).each { lineIdx ->
-                println cellLines.withIndex().collect { lines, idx ->
+            (0..<maxLines).collect { lineIdx ->
+                cellLines.withIndex().collect { lines, idx ->
                     def col = columns[idx]
                     (lines.size() > lineIdx ? lines[lineIdx] : '').padRight(widths[col])
                 }.join('\t')
-            }
+            }.join('\n')
         }
 
-        // Header
-        printRowMultiline(columns, columnWidths)
-
-        // Data rows
+        def result = []
+        result << printRowMultiline(columns, columnWidths)
         stringData.each { row ->
-            printRowMultiline(columns.collect { row[it] ?: '' }, columnWidths)
+            result << printRowMultiline(columns.collect { row[it] ?: '' }, columnWidths)
         }
+        return result.join('\n')
     }
-
+    
     static String dir(obj) {
         def clazz = obj.getClass()
         def rows = []
@@ -333,8 +321,12 @@ class MacroHelper {
         rows = rows.unique { [it.name, it.type, it.from] }
         rows = rows.findAll { !it.name.contains('$') }
         
+        def typeOrder = ['field': 0, 'property': 1, 'method': 2]
         rows = rows.sort { a, b -> 
-            a.depth <=> b.depth ?: a.type <=> b.type ?: a.name.toLowerCase() <=> b.name.toLowerCase() ?: a.name <=> b.name
+            a.depth <=> b.depth ?: 
+            typeOrder[a.type] <=> typeOrder[b.type] ?: 
+            a.name.toLowerCase() <=> b.name.toLowerCase() ?: 
+            a.signature <=> b.signature
         }
         
         p "$clazz:"
@@ -369,6 +361,29 @@ class MacroHelper {
         }
         def throwsClause = exceptions ? ' throws ' + exceptions.join(', ') : ''
         return "${returnType} ${method.name}(${params})${throwsClause}"
+    }
+
+    private static List<Map> convertToMapList(List<Object> data) {
+        if (!data) return []
+        
+        data.collect { obj ->
+            if (obj instanceof Map) {
+                return obj
+            }
+            
+            if (obj instanceof Collection) {
+                return [value: obj]
+            }
+            
+            def result = [:]
+            obj.getClass().declaredFields.each { field ->
+                if (!field.synthetic && !field.name.contains('$') && !java.lang.reflect.Modifier.isTransient(field.modifiers)) {
+                    field.accessible = true
+                    result[field.name] = field.get(obj)
+                }
+            }
+            return result
+        }
     }
 } 
 
