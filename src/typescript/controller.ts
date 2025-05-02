@@ -44,10 +44,8 @@ export class GroovyKernel {
 
 	private async interruptHandler(): Promise<void> {
 		if (this.currentCellExecution) {
-			console.log('Interrupting current cell execution');
 			// First interrupt the Groovy process
 			if (this.currentGroovyProcess) {
-				console.log('Interrupting current Groovy process');
 				this.currentGroovyProcess.interrupt();
 				this.currentGroovyProcess = null;
 			}
@@ -73,7 +71,6 @@ export class GroovyKernel {
 	}
 
 	private async execute(cell: vscode.NotebookCell): Promise<void> {
-		console.log('Starting execution for cell:', cell.document.uri.path);
 		const execution = this.controller.createNotebookCellExecution(cell);
 		this.currentCellExecution = execution;
 		execution.executionOrder = ++this.executionOrder;
@@ -83,21 +80,16 @@ export class GroovyKernel {
 		const code = cell.document.getText();
 
 		try {
-			console.log('Starting cell execution with cwd:', cwd);
 			execution.start(Date.now());
 			await execution.clearOutput();
 
-			console.log('Getting or spawning Groovy process for context:', ctxId);
 			const groovy = this.groovyProcMan.getOrSpawn(ctxId, this.groovyEvaluatorPath, cwd);
 			this.currentGroovyProcess = groovy;
-			console.log('Running code:', code);
 			const result = await groovy.run(code);
-			console.log('Execution result:', result);
 
 			// Check if execution was interrupted before appending output
 			if (this.currentCellExecution === execution) {
 				if (result.stderr && result.stderr.trim().length > 0) {
-					console.log('Appending stderr output:', result.stderr);
 					execution.appendOutput([
 						new vscode.NotebookCellOutput([
 							vscode.NotebookCellOutputItem.stderr(result.stderr)
@@ -106,7 +98,6 @@ export class GroovyKernel {
 				}
 
 				if (result.stdout && result.stdout.trim().length > 0) {
-					console.log('Appending stdout output:', result.stdout);
 					execution.appendOutput([
 						new vscode.NotebookCellOutput([
 							vscode.NotebookCellOutputItem.stdout(result.stdout)
@@ -126,7 +117,6 @@ export class GroovyKernel {
 				const stdout = processError.stdout || '';
 
 				if (stdout.length > 0) {
-					console.log('Appending error stdout output');
 					execution.appendOutput([
 						new vscode.NotebookCellOutput([
 							vscode.NotebookCellOutputItem.stdout(stdout)
@@ -134,7 +124,6 @@ export class GroovyKernel {
 					]);
 				}
 
-				console.log('Appending error stderr output');
 				execution.appendOutput([
 					new vscode.NotebookCellOutput([
 						vscode.NotebookCellOutputItem.stderr(stderr || errorMessage)

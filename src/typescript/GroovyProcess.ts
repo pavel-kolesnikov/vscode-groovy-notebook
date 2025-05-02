@@ -12,13 +12,11 @@ export class GroovyProcess {
 
     constructor() {
         const cmd = this.findGroovyPath();
-        console.log('Initializing GroovyProcess with command:', cmd);
         const config: ProcessConfig = {
             cmd,
             args: [vscode.workspace.getConfiguration('groovyNotebook').get('groovyPath', 'groovy')],
             cwd: ''
         };
-        console.log('Process configuration:', config);
         this.processManager = new ProcessManager(config);
     }
 
@@ -26,7 +24,6 @@ export class GroovyProcess {
      * Sets a custom path to the Groovy binary
      */
     public useCmd(pathToBinary: string): void {
-        console.log('Setting custom Groovy binary path:', pathToBinary);
         this.processManager = new ProcessManager({
             ...this.processManager['config'],
             cmd: pathToBinary
@@ -37,7 +34,6 @@ export class GroovyProcess {
      * Sets custom arguments for the Groovy process
      */
     public useArgs(...args: string[]): void {
-        console.log('Setting custom Groovy arguments:', args);
         this.processManager = new ProcessManager({
             ...this.processManager['config'],
             args
@@ -48,7 +44,6 @@ export class GroovyProcess {
      * Sets the working directory for the Groovy process
      */
     public useCwd(cwd: string): void {
-        console.log('Setting custom working directory:', cwd);
         this.processManager = new ProcessManager({
             ...this.processManager['config'],
             cwd

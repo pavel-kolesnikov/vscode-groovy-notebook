@@ -94,7 +94,6 @@ export class ProcessManager extends EventEmitter {
 
     private async spawn(): Promise<ChildProcess> {
         return new Promise((resolve, reject) => {
-            console.log('Spawning new process with config:', this.config);
             const process = this.createProcess();
             const stdout = process.stdout;
             const stderr = process.stderr;
@@ -114,10 +113,7 @@ export class ProcessManager extends EventEmitter {
 
             const onData = (chunk: Buffer) => {
                 const data = chunk.toString();
-                console.log('Received process output:', data);
-                console.log('Raw bytes:', Array.from(chunk).map(b => b.toString(16).padStart(2, '0')).join(' '));
                 if (data.includes(ProcessManager.SIGNAL_READY)) {
-                    console.log('Process signaled ready');
                     stdout.removeListener('data', onData);
                     clearTimeout(timeoutId);
                     this.isReady = true;
@@ -232,8 +228,7 @@ export class ProcessManager extends EventEmitter {
             ...process.env,
             JAVA_HOME: javaHome
         };
-
-        console.log('Creating process with env:', env);        
+        
         return spawn(this.config.cmd, this.config.args, {
             cwd: this.config.cwd,
             env: env
