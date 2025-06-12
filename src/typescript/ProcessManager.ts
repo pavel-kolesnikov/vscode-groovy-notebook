@@ -322,19 +322,6 @@ export class ProcessManager extends EventEmitter {
 
     private updateLastActivity(): void {
         this.lastActivityTime = Date.now();
-        this.setupIdleTimeout();
-    }
-
-    private setupIdleTimeout(): void {
-        if (this.idleTimeout) {
-            clearTimeout(this.idleTimeout);
-        }
-
-        this.idleTimeout = setTimeout(async () => {
-            if (Date.now() - this.lastActivityTime >= ProcessManager.PROCESS_IDLE_TIMEOUT) {
-                await this.dispose();
-            }
-        }, ProcessManager.PROCESS_IDLE_TIMEOUT);
     }
 
     private createError(
