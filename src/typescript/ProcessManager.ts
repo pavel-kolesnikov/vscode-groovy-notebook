@@ -39,8 +39,6 @@ export class ProcessManager extends EventEmitter {
     private config: ProcessConfig;
     private isReady: boolean = false;
     private isTerminated: boolean = false;
-    private lastActivityTime: number = Date.now();
-    private idleTimeout: NodeJS.Timeout | null = null;
     private currentProcess: ChildProcess | null = null;
 
     constructor(config: ProcessConfig) {
@@ -81,14 +79,6 @@ export class ProcessManager extends EventEmitter {
             return await this.executeCode(code);
         } catch (error: unknown) {
             console.error('[ProcessManager] Error during execution:', error);
-            // If the error is about clean exit without output, try to restart the process
-            if (error instanceof Error && error.message === 'Process exited cleanly without output') {
-                console.log('[ProcessManager] Attempting to restart process');
-                this.currentProcess = null;
-                this.isReady = false;
-                this.currentProcess = await this.acquire();
-                return await this.executeCode(code);
-            }
             throw error;
         } finally {
             if (this.currentProcess) {
@@ -106,10 +96,6 @@ export class ProcessManager extends EventEmitter {
         await Promise.all(disposePromises);
         this.pool = [];
         this.processRequestQueue = [];
-        if (this.idleTimeout) {
-            clearTimeout(this.idleTimeout);
-            this.idleTimeout = null;
-        }
         if (this.currentProcess) {
             await this.terminateProcess(this.currentProcess);
             this.currentProcess = null;
@@ -151,8 +137,6 @@ export class ProcessManager extends EventEmitter {
                     stdout.removeListener('data', onData);
                     clearTimeout(timeoutId);
                     this.isReady = true;
-                    this.updateLastActivity();
-                    this.setupIdleTimeout();
                     resolve(process);
                 }
             };
@@ -318,10 +302,6 @@ export class ProcessManager extends EventEmitter {
 
             process.kill('SIGTERM');
         });
-    }
-
-    private updateLastActivity(): void {
-        this.lastActivityTime = Date.now();
     }
 
     private createError(
