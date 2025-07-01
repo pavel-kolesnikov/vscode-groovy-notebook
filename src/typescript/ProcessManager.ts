@@ -29,8 +29,6 @@ export interface ProcessError extends Error {
 export class ProcessManager extends EventEmitter {
     private static readonly MAX_POOL_SIZE = 3;
     private static readonly INITIALIZATION_TIMEOUT = 10_000; // 10 seconds
-    private static readonly PROCESS_IDLE_TIMEOUT = 5 * 60_000; // 5 minutes
-    private static readonly EXECUTION_TIMEOUT = 10 * 60_000; // 10 minutes
     private static readonly SIGNAL_END_OF_MESSAGE = String.fromCharCode(3);
     private static readonly SIGNAL_READY = String.fromCharCode(6);
 
@@ -246,17 +244,6 @@ export class ProcessManager extends EventEmitter {
                 hasReceivedOutput = true;
                 stderrChunks.push(chunk);
             };
-
-            const timeout = setTimeout(() => {
-                console.error('[ProcessManager] Execution timeout');
-                cleanup();
-                reject(this.createError(
-                    'Execution timeout',
-                    'EXECUTION_TIMEOUT',
-                    Buffer.concat(stdoutChunks).toString(),
-                    Buffer.concat(stderrChunks).toString()
-                ));
-            }, ProcessManager.EXECUTION_TIMEOUT);
 
             this.currentProcess.on('exit', onExit);
             this.currentProcess.on('error', onError);
