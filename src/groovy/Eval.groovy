@@ -135,17 +135,20 @@ class MacroHelper {
         log.info "Starting macro injection..."
         final Binding b = shell.context
 
-        log.info "Injecting 'p' macro..."
-        b.setVariable "p", MacroHelper.&p
-
-        log.info "Injecting 'pp' macro..."
-        b.setVariable "pp", MacroHelper.&pp
-
         log.info "Injecting 'addClasspath' macro..."
         b.setVariable "addClasspath", MacroHelper.&addClasspath.curry(shell)
 
         log.info "Injecting 'grab' macro..."
         b.setVariable "grab", MacroHelper.&grab.curry(shell)
+
+        log.info "Injecting 'findClass' macro..."
+        b.setVariable "findClass", MacroHelper.&findClass.curry(shell)
+
+        log.info "Injecting 'p' macro..."
+        b.setVariable "p", MacroHelper.&p
+
+        log.info "Injecting 'pp' macro..."
+        b.setVariable "pp", MacroHelper.&pp
 
         log.info "Injecting 'tt' macro..."
         b.setVariable "tt", MacroHelper.&tt
@@ -204,6 +207,26 @@ class MacroHelper {
             classLoader: shell.classLoader,
             coords
         )
+    }
+
+    private static void findClass(GroovyShell shell, String className) {
+        shell.classLoader.getURLs()
+            .stream()
+            .parallel()
+            .map { url ->
+                try {
+                    Optional.of(new java.util.jar.JarFile(new File(url.toURI())))
+                } catch (Exception e) {
+                    Optional.empty()
+                }
+            }
+            .filter { it.isPresent() }
+            .map { it.get() }
+            .flatMap { jar -> jar.entries().toList().stream() }
+            .filter { it.name.endsWith('.class') }
+            .map { it.name.replace('/', '.').replace('.class', '') }
+            .filter { it.tokenize(".").last == className }
+            .toList()
     }
     
     private static void tt(List<Object> data, String columnsToRender = null) {
