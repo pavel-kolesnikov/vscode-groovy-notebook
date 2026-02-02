@@ -132,34 +132,22 @@ class Eval {
 @Log
 class MacroHelper {
     static void injectMacroses(GroovyShell shell) {
-        log.info "Starting macro injection..."
         final Binding b = shell.context
+        log.info "Starting macro injection..."
 
-        log.info "Injecting 'addClasspath' macro..."
         b.setVariable "addClasspath", MacroHelper.&addClasspath.curry(shell)
-
-        log.info "Injecting 'grab' macro..."
         b.setVariable "grab", MacroHelper.&grab.curry(shell)
-
-        log.info "Injecting 'findClass' macro..."
         b.setVariable "findClass", MacroHelper.&findClass.curry(shell)
-
-        log.info "Injecting 'p' macro..."
         b.setVariable "p", MacroHelper.&p
-
-        log.info "Injecting 'pp' macro..."
         b.setVariable "pp", MacroHelper.&pp
-
-        log.info "Injecting 'tt' macro..."
         b.setVariable "tt", MacroHelper.&tt
-
-        log.info "Injecting 'dir' macro..."
         b.setVariable "dir", MacroHelper.&dir
 
         log.info "Macro injection complete"
 
         log.info "Loading groovysh.rc..."
         loadGroovyshRc(shell)
+        log.info "Loaded groovysh.rc"
     }
 
     private static void loadGroovyshRc(GroovyShell shell) {
@@ -209,7 +197,7 @@ class MacroHelper {
         )
     }
 
-    private static void findClass(GroovyShell shell, String className) {
+    private static List<String> findClass(GroovyShell shell, String className) {
         shell.classLoader.getURLs()
             .stream()
             .parallel()
