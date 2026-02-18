@@ -1,0 +1,1 @@
+- Notebook icon created by <a href="https://www.flaticon.com/free-icons/notebook" title="notebook icons">Freepik - Flaticon</a>

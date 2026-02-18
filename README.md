@@ -25,6 +25,3 @@ Some utility methods are injected into the binding of the shell:
 - Not properly detect groovy process abnormal exit in many cases.
 - In some cases errors are not propagated to UI & the kernel seems hang forever.
 
-# Attributions
-
-- Notebook icon created by <a href="https://www.flaticon.com/free-icons/notebook" title="notebook icons">Freepik - Flaticon</a>
