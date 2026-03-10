@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 
-/**
- * Notebook serializer for Groovy notebooks.
- * Supports saving and restoring output cells.
- */
+const SCHEMA_VERSION = '1.0.0';
+const TEXT_MIME_TYPES = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
 
 interface RawNotebookData {
+	schemaVersion?: string;
 	cells: RawNotebookCell[]
 }
 
@@ -29,11 +28,12 @@ interface SerializedOutputItem {
 	encoding?: 'base64' | 'text';
 }
 
-const TEXT_MIME_TYPES = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
-
 function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.NotebookCellOutput[] {
+	if (!outputs || outputs.length === 0) {
+		return [];
+	}
 	return outputs.map(output => {
-		const outputItems = output.outputs.map(item => {
+		const outputItems = output.outputs?.map(item => {
 			if (item.mime === 'text/plain' && typeof item.value === 'string') {
 				return vscode.NotebookCellOutputItem.text(item.value);
 			}
@@ -43,7 +43,7 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 			}
 			const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
 			return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
-		});
+		}) ?? [];
 		return new vscode.NotebookCellOutput(outputItems, output.metadata);
 	});
 }
@@ -77,8 +77,14 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 		let raw: RawNotebookData;
 		try {
 			raw = <RawNotebookData>JSON.parse(contents);
-		} catch {
+		} catch (e) {
+			console.error('[GroovyContentSerializer] Failed to parse notebook:', e);
 			raw = { cells: [] };
+		}
+
+		const schemaVersion = raw.schemaVersion;
+		if (schemaVersion && schemaVersion !== SCHEMA_VERSION) {
+			console.warn(`[GroovyContentSerializer] Schema version mismatch: expected ${SCHEMA_VERSION}, got ${schemaVersion}`);
 		}
 
 		const cells = raw.cells.map(item => {
@@ -99,7 +105,10 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 	}
 
 	public async serializeNotebook(data: vscode.NotebookData, token: vscode.CancellationToken): Promise<Uint8Array> {
-		const contents: RawNotebookData = { cells: [] };
+		const contents: RawNotebookData = { 
+			schemaVersion: SCHEMA_VERSION,
+			cells: [] 
+		};
 
 		for (const cell of data.cells) {
 			const cellData: RawNotebookCell = {
