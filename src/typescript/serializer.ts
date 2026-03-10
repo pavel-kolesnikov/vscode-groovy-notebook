@@ -29,6 +29,45 @@ interface SerializedOutputItem {
 	encoding?: 'base64' | 'text';
 }
 
+const TEXT_MIME_TYPES = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
+
+function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.NotebookCellOutput[] {
+	return outputs.map(output => {
+		const outputItems = output.outputs.map(item => {
+			if (item.mime === 'text/plain' && typeof item.value === 'string') {
+				return vscode.NotebookCellOutputItem.text(item.value);
+			}
+			if (item.encoding === 'base64') {
+				const decoded = Buffer.from(String(item.value), 'base64');
+				return new vscode.NotebookCellOutputItem(decoded, item.mime);
+			}
+			const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
+			return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
+		});
+		return new vscode.NotebookCellOutput(outputItems, output.metadata);
+	});
+}
+
+function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedCellOutput[] {
+	return outputs.map(output => ({
+		outputs: output.items.map(item => {
+			if (TEXT_MIME_TYPES.includes(item.mime)) {
+				return {
+					mime: item.mime,
+					value: new TextDecoder().decode(item.data),
+					encoding: 'text'
+				};
+			}
+			return {
+				mime: item.mime,
+				value: Buffer.from(item.data).toString('base64'),
+				encoding: 'base64'
+			};
+		}),
+		metadata: output.metadata
+	}));
+}
+
 export class GroovyContentSerializer implements vscode.NotebookSerializer {
 	public readonly label: string = 'Groovy Content Serializer';
 
@@ -50,23 +89,7 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 			);
 
 			if (item.outputs && item.kind === vscode.NotebookCellKind.Code) {
-				cellData.outputs = item.outputs.map(output => {
-					const outputItems = output.outputs.map(item => {
-						if (item.mime === 'text/plain' && typeof item.value === 'string') {
-							return vscode.NotebookCellOutputItem.text(item.value);
-						}
-						if (item.encoding === 'base64') {
-							const decoded = Buffer.from(String(item.value), 'base64');
-							return new vscode.NotebookCellOutputItem(decoded, item.mime);
-						}
-						const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
-						return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
-					});
-					return new vscode.NotebookCellOutput(
-						outputItems,
-						output.metadata
-					);
-				});
+				cellData.outputs = deserializeCellOutputs(item.outputs);
 			}
 
 			return cellData;
@@ -86,26 +109,7 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 			};
 
 			if (cell.outputs && cell.outputs.length > 0) {
-				cellData.outputs = cell.outputs.map((output: vscode.NotebookCellOutput) => {
-					return {
-						outputs: output.items.map((item: vscode.NotebookCellOutputItem) => {
-							const textMimeTypes = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
-							if (textMimeTypes.includes(item.mime)) {
-								return {
-									mime: item.mime,
-									value: new TextDecoder().decode(item.data),
-									encoding: 'text'
-								};
-							}
-							return {
-								mime: item.mime,
-								value: Buffer.from(item.data).toString('base64'),
-								encoding: 'base64'
-							};
-						}),
-						metadata: output.metadata
-					};
-				});
+				cellData.outputs = serializeCellOutputs(cell.outputs);
 			}
 
 			contents.cells.push(cellData);
