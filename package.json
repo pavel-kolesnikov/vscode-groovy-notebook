@@ -91,7 +91,7 @@
     "lint": "eslint src --ext ts",
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
-    "dogfood": "code --install-extension groovy-notebook-*.vsix"
+    "dogfood": "npm run pack && code --install-extension groovy-notebook-*.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^8",
