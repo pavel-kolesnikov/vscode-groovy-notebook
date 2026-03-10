@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.workspace.registerNotebookSerializer(
                 GroovyKernelController.type,
                 new GroovyContentSerializer(),
-                { transientOutputs: true }
+                { transientOutputs: false }
             ),
             kernel,
             registry,

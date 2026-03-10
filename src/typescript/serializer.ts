@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 
 /**
- * An ultra-minimal sample provider that lets the user type in JSON, and then
- * outputs JSON cells. The outputs are transient and not saved to notebook file on disk.
+ * Notebook serializer for Groovy notebooks.
+ * Supports saving and restoring output cells.
  */
 
 interface RawNotebookData {
@@ -15,15 +15,26 @@ interface RawNotebookCell {
 	value: string;
 	kind: vscode.NotebookCellKind;
 	editable?: boolean;
+	outputs?: SerializedCellOutput[];
+}
+
+interface SerializedCellOutput {
+	outputs: SerializedOutputItem[];
+	metadata?: Record<string, unknown>;
+}
+
+interface SerializedOutputItem {
+	mime: string;
+	value: unknown;
+	encoding?: 'base64' | 'text';
 }
 
 export class GroovyContentSerializer implements vscode.NotebookSerializer {
 	public readonly label: string = 'Groovy Content Serializer';
 
 	public async deserializeNotebook(data: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
-		const contents = new TextDecoder().decode(data); // convert to String
+		const contents = new TextDecoder().decode(data);
 
-		// Read file contents
 		let raw: RawNotebookData;
 		try {
 			raw = <RawNotebookData>JSON.parse(contents);
@@ -31,29 +42,75 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 			raw = { cells: [] };
 		}
 
-		// Create array of Notebook cells for the VS Code API from file contents
-		const cells = raw.cells.map(item => new vscode.NotebookCellData(
-			item.kind,
-			item.value,
-			item.language
-		));
+		const cells = raw.cells.map(item => {
+			const cellData = new vscode.NotebookCellData(
+				item.kind,
+				item.value,
+				item.language
+			);
+
+			if (item.outputs && item.kind === vscode.NotebookCellKind.Code) {
+				cellData.outputs = item.outputs.map(output => {
+					const outputItems = output.outputs.map(item => {
+						if (item.mime === 'text/plain' && typeof item.value === 'string') {
+							return vscode.NotebookCellOutputItem.text(item.value);
+						}
+						if (item.encoding === 'base64') {
+							const decoded = Buffer.from(String(item.value), 'base64');
+							return new vscode.NotebookCellOutputItem(decoded, item.mime);
+						}
+						const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
+						return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
+					});
+					return new vscode.NotebookCellOutput(
+						outputItems,
+						output.metadata
+					);
+				});
+			}
+
+			return cellData;
+		});
 
 		return new vscode.NotebookData(cells);
 	}
 
 	public async serializeNotebook(data: vscode.NotebookData, token: vscode.CancellationToken): Promise<Uint8Array> {
-		// Map the Notebook data into the format we want to save the Notebook data as
 		const contents: RawNotebookData = { cells: [] };
 
 		for (const cell of data.cells) {
-			contents.cells.push({
+			const cellData: RawNotebookCell = {
 				kind: cell.kind,
 				language: cell.languageId,
 				value: cell.value
-			});
+			};
+
+			if (cell.outputs && cell.outputs.length > 0) {
+				cellData.outputs = cell.outputs.map((output: vscode.NotebookCellOutput) => {
+					return {
+						outputs: output.items.map((item: vscode.NotebookCellOutputItem) => {
+							const textMimeTypes = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
+							if (textMimeTypes.includes(item.mime)) {
+								return {
+									mime: item.mime,
+									value: new TextDecoder().decode(item.data),
+									encoding: 'text'
+								};
+							}
+							return {
+								mime: item.mime,
+								value: Buffer.from(item.data).toString('base64'),
+								encoding: 'base64'
+							};
+						}),
+						metadata: output.metadata
+					};
+				});
+			}
+
+			contents.cells.push(cellData);
 		}
 
-		// Pretty print the JSON with 2 spaces indentation
 		const jsonString = JSON.stringify(contents, null, 2);
 		return new TextEncoder().encode(jsonString);
 	}
