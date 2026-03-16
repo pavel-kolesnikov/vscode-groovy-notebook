@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
-import { SessionRegistry, SessionStatus } from './session';
+import { SessionRegistry } from './session.js';
+import { ExecutionStatus } from './types.js';
 
 export class KernelStatusBar implements vscode.Disposable {
     private readonly item: vscode.StatusBarItem;
+    private readonly disposables: vscode.Disposable[] = [];
     private currentNotebookUri: vscode.Uri | null = null;
     
     constructor(private readonly registry: SessionRegistry) {
@@ -10,23 +12,27 @@ export class KernelStatusBar implements vscode.Disposable {
         this.item.command = 'groovy-notebook.showKernelCommands';
         this.item.tooltip = 'Groovy Kernel Status';
         
-        this.registry.onDidChangeStatus(({ uri, status }) => {
-            if (this.currentNotebookUri?.toString() === uri.toString()) {
-                this.updateDisplay(status);
-            }
-        });
+        this.disposables.push(
+            this.registry.onDidChangeStatus(({ uri, status }: { uri: vscode.Uri; status: ExecutionStatus }) => {
+                if (this.currentNotebookUri?.toString() === uri.toString()) {
+                    this.updateDisplay(status);
+                }
+            })
+        );
         
-        vscode.window.onDidChangeActiveNotebookEditor((editor) => {
-            if (editor) {
-                this.currentNotebookUri = editor.notebook.uri;
-                const session = this.registry.get(editor.notebook.uri);
-                this.updateDisplay(session?.getStatus() ?? 'idle');
-                this.item.show();
-            } else {
-                this.currentNotebookUri = null;
-                this.item.hide();
-            }
-        });
+        this.disposables.push(
+            vscode.window.onDidChangeActiveNotebookEditor((editor) => {
+                if (editor) {
+                    this.currentNotebookUri = editor.notebook.uri;
+                    const session = this.registry.get(editor.notebook.uri);
+                    this.updateDisplay(session?.getStatus() ?? 'idle');
+                    this.item.show();
+                } else {
+                    this.currentNotebookUri = null;
+                    this.item.hide();
+                }
+            })
+        );
         
         const activeEditor = vscode.window.activeNotebookEditor;
         if (activeEditor) {
@@ -37,9 +43,10 @@ export class KernelStatusBar implements vscode.Disposable {
         }
     }
     
-    private updateDisplay(status: SessionStatus): void {
-        const config: Record<SessionStatus, { icon: string; text: string }> = {
+    private updateDisplay(status: ExecutionStatus): void {
+        const config: Record<ExecutionStatus, { icon: string; text: string }> = {
             idle: { icon: '$(circle-outline)', text: 'Groovy' },
+            starting: { icon: '$(sync)', text: 'Groovy (Starting...)' },
             busy: { icon: '$(sync~spin)', text: 'Groovy' },
             error: { icon: '$(error)', text: 'Groovy (Error)' },
             terminated: { icon: '$(circle-slash)', text: 'Groovy (Stopped)' }
@@ -51,50 +58,9 @@ export class KernelStatusBar implements vscode.Disposable {
     
     public dispose(): void {
         this.item.dispose();
+        for (const disposable of this.disposables) {
+            disposable.dispose();
+        }
+        this.disposables.length = 0;
     }
-}
-
-export function registerKernelCommands(
-    context: vscode.ExtensionContext,
-    registry: SessionRegistry
-): void {
-    context.subscriptions.push(
-        vscode.commands.registerCommand('groovy-notebook.showKernelCommands', async () => {
-            const items = [
-                { label: '$(refresh) Restart Kernel', action: 'restart' },
-                { label: '$(debug-stop) Terminate Kernel', action: 'terminate' }
-            ];
-            
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Groovy Kernel Commands'
-            });
-            
-            if (selected && vscode.window.activeNotebookEditor) {
-                const uri = vscode.window.activeNotebookEditor.notebook.uri;
-                
-                switch (selected.action) {
-                    case 'restart':
-                        await registry.restart(uri);
-                        vscode.window.showInformationMessage('Groovy kernel restarted');
-                        break;
-                    case 'terminate':
-                        await registry.terminate(uri);
-                        vscode.window.showInformationMessage('Groovy kernel terminated');
-                        break;
-                }
-            }
-        }),
-        
-        vscode.commands.registerCommand('groovy-notebook.restartKernel', async () => {
-            if (vscode.window.activeNotebookEditor) {
-                await registry.restart(vscode.window.activeNotebookEditor.notebook.uri);
-            }
-        }),
-        
-        vscode.commands.registerCommand('groovy-notebook.terminateKernel', async () => {
-            if (vscode.window.activeNotebookEditor) {
-                await registry.terminate(vscode.window.activeNotebookEditor.notebook.uri);
-            }
-        })
-    );
 }
