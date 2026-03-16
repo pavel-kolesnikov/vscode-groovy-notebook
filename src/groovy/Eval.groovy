@@ -50,6 +50,17 @@ class Eval {
         log.info "Starting GroovyShell reset..."
         log.info "Creating new StringWriter for output buffer..."
         scriptOutputBuf = new StringWriter()
+        log.info "Redirecting System.out and System.err to capture println..."
+
+        // Redirect System.out to the StringWriter to capture println from user code
+        class WriterOutputStream extends OutputStream {
+            Writer writer
+            WriterOutputStream(Writer w) { writer = w }
+            void write(int b) throws IOException { writer.write(b) }
+        }
+        System.setOut(new PrintStream(new WriterOutputStream(scriptOutputBuf), true))
+        System.setErr(new PrintStream(new WriterOutputStream(scriptOutputBuf), true))
+
         log.info "Creating new Binding..."
         Binding shellBinding = new Binding(out: new PrintWriter(scriptOutputBuf))
 
