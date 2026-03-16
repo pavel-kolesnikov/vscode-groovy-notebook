@@ -1,19 +1,19 @@
 import * as vscode from 'vscode';
-import { GroovyProcess, ProcessResult, ProcessStatus } from './process';
+import { GroovyProcess, ProcessResult } from './process.js';
+import { ExecutionStatus, ExecutionResult, Executable, ProcessConfig } from './types.js';
 
-export type SessionStatus = 'idle' | 'busy' | 'error' | 'terminated';
+export type SessionStatus = ExecutionStatus;
 
-export class GroovySession implements vscode.Disposable {
+export class GroovySession implements vscode.Disposable, Executable {
     private process: GroovyProcess | null = null;
+    private processStatusSubscription: vscode.Disposable | null = null;
     private status: SessionStatus = 'idle';
     private readonly onStatusChange = new vscode.EventEmitter<SessionStatus>();
     private disposed = false;
     
     constructor(
         public readonly notebookUri: vscode.Uri,
-        private readonly groovyPath: string,
-        private readonly evalScriptPath: string,
-        private readonly cwd: string
+        private readonly config: ProcessConfig
     ) {}
     
     public readonly onDidChangeStatus = this.onStatusChange.event;
@@ -33,6 +33,10 @@ export class GroovySession implements vscode.Disposable {
     }
     
     public async run(code: string): Promise<ProcessResult> {
+        if (!this.process) {
+            this.setStatus('starting');
+        }
+        
         await this.ensureStarted();
         
         this.setStatus('busy');
@@ -52,6 +56,9 @@ export class GroovySession implements vscode.Disposable {
             await this.process.terminate();
             this.process = null;
         }
+        
+        this.processStatusSubscription?.dispose();
+        this.processStatusSubscription = null;
         
         this.setStatus('idle');
     }
@@ -76,6 +83,8 @@ export class GroovySession implements vscode.Disposable {
         
         this.disposed = true;
         this.terminate().catch(console.error);
+        this.processStatusSubscription?.dispose();
+        this.processStatusSubscription = null;
         this.onStatusChange.dispose();
     }
     
@@ -87,13 +96,9 @@ export class GroovySession implements vscode.Disposable {
     }
     
     private async createProcess(): Promise<GroovyProcess> {
-        const proc = new GroovyProcess(
-            this.groovyPath,
-            this.evalScriptPath,
-            this.cwd
-        );
+        const proc = new GroovyProcess(this.config);
         
-        proc.onDidChangeStatus((status) => {
+        this.processStatusSubscription = proc.onDidChangeStatus((status: ExecutionStatus) => {
             if (status === 'error' && this.status !== 'busy') {
                 this.setStatus('error');
             }
@@ -106,12 +111,10 @@ export class GroovySession implements vscode.Disposable {
 
 export class SessionRegistry implements vscode.Disposable {
     private readonly sessions = new Map<string, GroovySession>();
+    private readonly sessionSubscriptions = new Map<string, vscode.Disposable>();
     private readonly onDidChangeSessionStatus = new vscode.EventEmitter<{ uri: vscode.Uri; status: SessionStatus }>();
     
-    constructor(
-        private readonly groovyPath: string,
-        private readonly evalScriptPath: string
-    ) {}
+    constructor(private readonly baseConfig: Omit<ProcessConfig, 'cwd'>) {}
     
     public readonly onDidChangeStatus = this.onDidChangeSessionStatus.event;
     
@@ -124,16 +127,16 @@ export class SessionRegistry implements vscode.Disposable {
         let session = this.sessions.get(key);
         
         if (!session) {
-            session = new GroovySession(
-                uri,
-                this.groovyPath,
-                this.evalScriptPath,
+            const config: ProcessConfig = {
+                ...this.baseConfig,
                 cwd
-            );
+            };
+            session = new GroovySession(uri, config);
             
-            session.onDidChangeStatus((status) => {
+            const subscription = session.onDidChangeStatus((status) => {
                 this.onDidChangeSessionStatus.fire({ uri, status });
             });
+            this.sessionSubscriptions.set(key, subscription);
             
             this.sessions.set(key, session);
         }
@@ -156,6 +159,10 @@ export class SessionRegistry implements vscode.Disposable {
     }
     
     public dispose(): void {
+        for (const subscription of this.sessionSubscriptions.values()) {
+            subscription.dispose();
+        }
+        this.sessionSubscriptions.clear();
         for (const session of this.sessions.values()) {
             session.dispose();
         }
