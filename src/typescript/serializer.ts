@@ -39,7 +39,7 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 			}
 			if (item.encoding === 'base64') {
 				const decoded = Buffer.from(String(item.value), 'base64');
-				return new vscode.NotebookCellOutputItem(decoded, item.mime);
+				return new vscode.NotebookCellOutputItem(new Uint8Array(decoded), item.mime);
 			}
 			const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
 			return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
