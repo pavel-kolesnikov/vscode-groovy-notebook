@@ -1,5 +1,6 @@
 {
   "name": "groovy-notebook",
+  "type": "module",
   "displayName": "Groovy Notebook",
   "description": "A basic Groovy notebook experience",
   "icon": "assets/notebook.png",
@@ -27,7 +28,7 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onCommand:notebook-serializer-sample.createJsonNotebook"
+    "onNotebook:groovy-notebook"
   ],
   "contributes": {
     "configuration": {
@@ -91,7 +92,8 @@
     "lint": "eslint src --ext ts",
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
-    "dogfood": "npm run pack && code --install-extension groovy-notebook-*.vsix"
+    "dogfood": "npm run pack && code --install-extension groovy-notebook-*.vsix",
+    "test": "mocha"
   },
   "devDependencies": {
     "@types/mocha": "^8",
@@ -102,6 +104,7 @@
     "@vscode/vsce": "^3.7.1",
     "eslint": "^9.39.2",
     "mocha": "^10",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
