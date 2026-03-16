@@ -5,9 +5,13 @@ import { ExecutionResult, Executable } from './types.js';
 import { normalizePath } from './pathUtils.js';
 
 export class GroovyKernelController implements vscode.Disposable {
+    /** Unique identifier for this notebook controller */
     public static readonly id = 'groovy-shell-kernel';
+    /** Notebook type this controller handles */
     public static readonly type = 'groovy-notebook';
+    /** Display label shown in VS Code UI */
     public static readonly label = 'Groovy Shell';
+    /** Languages supported by this kernel */
     public static readonly supportedLanguages = ['groovy'];
     
     private executionOrder = 0;
@@ -17,6 +21,10 @@ export class GroovyKernelController implements vscode.Disposable {
     
     private readonly controller: vscode.NotebookController;
     
+    /**
+     * Creates a new Groovy kernel controller.
+     * @param registry - Session registry to manage Groovy process instances
+     */
     constructor(private readonly registry: SessionRegistry) {
         this.controller = vscode.notebooks.createNotebookController(
             GroovyKernelController.id,

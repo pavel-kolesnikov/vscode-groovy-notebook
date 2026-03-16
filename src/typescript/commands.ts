@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { SessionRegistry } from './session.js';
 
+/**
+ * Registers VS Code commands for kernel control (restart, terminate).
+ * @param context - Extension context to register commands in
+ * @param registry - Session registry to manage kernel sessions
+ */
 export function registerKernelCommands(
     context: vscode.ExtensionContext,
     registry: SessionRegistry

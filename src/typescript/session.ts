@@ -4,6 +4,10 @@ import { ExecutionStatus, ExecutionResult, Executable, ProcessConfig } from './t
 
 export type SessionStatus = ExecutionStatus;
 
+/**
+ * Manages a Groovy REPL session for a specific notebook.
+ * Each notebook gets its own Groovy process instance.
+ */
 export class GroovySession implements vscode.Disposable, Executable {
     private process: GroovyProcess | null = null;
     private processStatusSubscription: vscode.Disposable | null = null;
@@ -11,6 +15,11 @@ export class GroovySession implements vscode.Disposable, Executable {
     private readonly onStatusChange = new vscode.EventEmitter<SessionStatus>();
     private disposed = false;
     
+    /**
+     * Creates a new Groovy session for a notebook.
+     * @param notebookUri - URI of the notebook this session belongs to
+     * @param config - Process configuration for the Groovy executable
+     */
     constructor(
         public readonly notebookUri: vscode.Uri,
         private readonly config: ProcessConfig
@@ -114,6 +123,10 @@ export class SessionRegistry implements vscode.Disposable {
     private readonly sessionSubscriptions = new Map<string, vscode.Disposable>();
     private readonly onDidChangeSessionStatus = new vscode.EventEmitter<{ uri: vscode.Uri; status: SessionStatus }>();
     
+    /**
+     * Creates a new session registry.
+     * @param baseConfig - Base process configuration (cwd will be added per-session)
+     */
     constructor(private readonly baseConfig: Omit<ProcessConfig, 'cwd'>) {}
     
     public readonly onDidChangeStatus = this.onDidChangeSessionStatus.event;
