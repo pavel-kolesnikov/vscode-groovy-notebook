@@ -116,7 +116,7 @@ export class GroovyProcess {
             
             if (!stdout) {
                 this.killProcess(proc);
-                reject(new Error(`Groovy process closed unexpectedly during startup. This may indicate a problem with the Groovy installation or the Eval.groovy script.`));
+                reject(new Error(`Groovy process closed unexpectedly during startup. This may indicate a problem with the Groovy installation or the Groovy Kernel script.`));
                 return;
             }
             
