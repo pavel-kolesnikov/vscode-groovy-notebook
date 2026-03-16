@@ -10,7 +10,7 @@ import groovy.yaml.YamlBuilder
 
 @groovy.transform.TypeChecked
 @Log
-class Eval {
+class Kernel {
     static {
         def rootLogger = java.util.logging.Logger.getLogger("")
         rootLogger.handlers.each { rootLogger.removeHandler(it) }
@@ -39,42 +39,27 @@ class Eval {
     private static final String SIGNAL_END_OF_MESSAGE = '\3' // ASCII ETX
 
     public static void main(args) {
-        new Eval().run(System.in)
+        new Kernel().run(System.in)
     }
 
-    private StringWriter scriptOutputBuf = new StringWriter()
+    private ByteArrayOutputStream scriptOutputBuf = new ByteArrayOutputStream()
     private GroovyShell shell
 
-    Eval() {
-        log.info "Starting Eval initialization..."
-        log.info "Creating Groovy shell..."
+    Kernel() {
         this.shell = resetShell()
-        log.info "Eval initialization complete"
     }
 
     private GroovyShell resetShell() {
-        log.info "Starting GroovyShell reset..."
-        log.info "Creating new StringWriter for output buffer..."
-        scriptOutputBuf = new StringWriter()
-        log.info "Redirecting System.out and System.err to capture println..."
+        scriptOutputBuf = new ByteArrayOutputStream()
 
-        // Redirect System.out to the StringWriter to capture println from user code
-        class WriterOutputStream extends OutputStream {
-            Writer writer
-            WriterOutputStream(Writer w) { writer = w }
-            void write(int b) throws IOException { writer.write(b) }
-        }
-        System.setOut(new PrintStream(new WriterOutputStream(scriptOutputBuf), true))
-        System.setErr(new PrintStream(new WriterOutputStream(scriptOutputBuf), true))
+        def out = new PrintStream(scriptOutputBuf, true)
+        System.setOut(out)
+        System.setErr(out)
 
-        log.info "Creating new Binding..."
-        Binding shellBinding = new Binding(out: new PrintWriter(scriptOutputBuf))
+        Binding shellBinding = new Binding(out: new PrintWriter(out, true))
 
-        log.info "Creating new GroovyShell instance..."
         def shell = new GroovyShell(shellBinding)
-        log.info "Starting macro injection..."
         MacroHelper.injectMacroses(shell)
-        log.info "GroovyShell reset complete"
 
         return shell
     }
@@ -138,11 +123,11 @@ class Eval {
         cleanupOutput()
         shell.parse(code).run()
 
-        return scriptOutputBuf.toString().strip()
+        return scriptOutputBuf.toString("UTF-8").strip()
     }
 
     private cleanupOutput() {
-        scriptOutputBuf.buffer.length = 0
+        scriptOutputBuf.reset()
     }
 }
 
@@ -150,7 +135,6 @@ class Eval {
 class MacroHelper {
     static void injectMacroses(GroovyShell shell) {
         final Binding b = shell.context
-        log.info "Starting macro injection..."
 
         b.setVariable "addClasspath", MacroHelper.&addClasspath.curry(shell)
         b.setVariable "grab", MacroHelper.&grab.curry(shell)
@@ -160,25 +144,16 @@ class MacroHelper {
         b.setVariable "tt", MacroHelper.&tt
         b.setVariable "dir", MacroHelper.&dir
 
-        log.info "Macro injection complete"
-
-        log.info "Loading groovysh.rc..."
         loadGroovyshRc(shell)
-        log.info "Loaded groovysh.rc"
     }
 
     private static void loadGroovyshRc(GroovyShell shell) {
         def groovyshRc = new File("${System.getProperty('user.home')}/.groovy/groovysh.rc")
-        if (groovyshRc.exists()) {
-            log.info "Reading groovysh.rc from ${groovyshRc.absolutePath}"
-            try {
-                shell.evaluate(groovyshRc.text)
-                log.info "Successfully executed groovysh.rc"
-            } catch (Exception e) {
-                log.warning "Failed to execute groovysh.rc: ${e.message}"
-            }
-        } else {
-            log.info "No groovysh.rc found at ${groovyshRc.absolutePath}"
+        if (!groovyshRc.exists()) return
+        try {
+            shell.evaluate(groovyshRc.text)
+        } catch (Exception e) {
+            log.warning "Failed to execute groovysh.rc: ${e.message}"
         }
     }
 

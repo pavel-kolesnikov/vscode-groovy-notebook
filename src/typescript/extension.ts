@@ -51,7 +51,7 @@ async function exportAsGroovy(notebook: vscode.NotebookDocument) {
 
 export function activate(context: vscode.ExtensionContext) {
     try {
-        const evalScriptPath = context.asAbsolutePath("src/groovy/Eval.groovy");
+        const evalScriptPath = context.asAbsolutePath("src/groovy/Kernel.groovy");
         const groovyPath = getGroovyPath();
         
         const baseConfig: Omit<ProcessConfig, 'cwd'> = {
