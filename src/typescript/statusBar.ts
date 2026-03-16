@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { SessionRegistry } from './session.js';
 import { ExecutionStatus } from './types.js';
 
+/**
+ * Manages the status bar item showing kernel state.
+ * Displays current kernel status (idle, busy, error, etc.) in VS Code UI.
+ */
 export class KernelStatusBar implements vscode.Disposable {
     private readonly item: vscode.StatusBarItem;
     private readonly disposables: vscode.Disposable[] = [];

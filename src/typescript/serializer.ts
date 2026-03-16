@@ -95,8 +95,12 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedC
 	}));
 }
 
+/**
+ * Serializes and deserializes Groovy notebook documents (.groovynb files).
+ * Handles conversion between JSON file format and VS Code's NotebookData.
+ */
 export class GroovyContentSerializer implements vscode.NotebookSerializer {
-	public readonly label: string = 'Groovy Content Serializer';
+    public readonly label: string = 'Groovy Content Serializer';
 
 	public async deserializeNotebook(data: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
 		const contents = new TextDecoder().decode(data);

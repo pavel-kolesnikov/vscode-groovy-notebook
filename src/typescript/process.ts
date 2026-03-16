@@ -11,6 +11,10 @@ export interface ProcessError extends ExecutionError {
     code?: string;
 }
 
+/**
+ * Wrapper around the Groovy subprocess that handles spawning,
+ * code execution, and process lifecycle.
+ */
 export class GroovyProcess {
     private static readonly INITIALIZATION_TIMEOUT = CONFIG.TIMEOUT_SPAWN_MS;
     private static readonly TERMINATION_TIMEOUT = CONFIG.TIMEOUT_THREAD_JOIN_MS;

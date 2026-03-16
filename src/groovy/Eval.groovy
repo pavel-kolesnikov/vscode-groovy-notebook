@@ -29,8 +29,14 @@ class Eval {
         rootLogger.addHandler(handler)
     }
 
-    private static final String SIGNAL_READY = '\6' //ASCII ACK
-    private static final String SIGNAL_END_OF_MESSAGE = '\3' //ASCII ETX
+    /**
+     * Protocol uses ASCII control characters for message framing with VS Code:
+     * - ACK (\\u0006): Sent by Groovy to signal ready state after startup
+     * - ETX (\\u0003): Used as delimiter - VS Code sends to mark end of code input,
+     *                  Groovy sends to mark end of output response
+     */
+    private static final String SIGNAL_READY = '\6' // ASCII ACK
+    private static final String SIGNAL_END_OF_MESSAGE = '\3' // ASCII ETX
 
     public static void main(args) {
         new Eval().run(System.in)
