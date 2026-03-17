@@ -1,1 +1,26 @@
-{"cells":[{"kind":2,"language":"groovy","value":"assert b == null, \"b leaked here!\""},{"kind":2,"language":"groovy","value":"lol = \"cus\"\np lol, lol\npp lol, lol"}]}
+{
+  "schemaVersion": "1.0.0",
+  "cells": [
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "assert b == null, \"b leaked here!\"",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stderr",
+              "value": "VGltZW91dCB3YWl0aW5nIGZvciBwcm9jZXNzIGluaXRpYWxpemF0aW9u",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": 2,
+      "language": "groovy",
+      "value": "lol = \"cus\"\np lol, lol\npp lol, lol"
+    }
+  ]
+}

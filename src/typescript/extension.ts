@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { GroovyKernelController } from './kernel';
-import { SessionRegistry } from './session';
-import { GroovyContentSerializer } from './serializer';
-import { KernelStatusBar, registerKernelCommands } from './statusBar';
+import { GroovyKernelController } from './kernel.js';
+import { SessionRegistry } from './session.js';
+import { GroovyContentSerializer } from './serializer.js';
+import { KernelStatusBar } from './statusBar.js';
+import { registerKernelCommands } from './commands.js';
+import { getGroovyPath } from './config.js';
+import { ProcessConfig } from './types.js';
 
 async function makeSampleNotebook() {
     const type = GroovyKernelController.type;
@@ -46,16 +49,17 @@ async function exportAsGroovy(notebook: vscode.NotebookDocument) {
     }
 }
 
-function getGroovyPath(): string {
-    return vscode.workspace.getConfiguration('groovyNotebook').get('groovyPath', 'groovy');
-}
-
 export function activate(context: vscode.ExtensionContext) {
     try {
-        const evalScriptPath = context.asAbsolutePath("src/groovy/Eval.groovy");
+        const evalScriptPath = context.asAbsolutePath("src/groovy/Kernel.groovy");
         const groovyPath = getGroovyPath();
         
-        const registry = new SessionRegistry(groovyPath, evalScriptPath);
+        const baseConfig: Omit<ProcessConfig, 'cwd'> = {
+            groovyPath,
+            evalScriptPath
+        };
+        
+        const registry = new SessionRegistry(baseConfig);
         const kernel = new GroovyKernelController(registry);
         const statusBar = new KernelStatusBar(registry);
         

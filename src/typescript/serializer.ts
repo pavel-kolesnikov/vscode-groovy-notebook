@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
+import * as zlib from 'zlib';
 
 const SCHEMA_VERSION = '1.0.0';
 const TEXT_MIME_TYPES = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
+const COMPRESSION_THRESHOLD = 1024;
 
 interface RawNotebookData {
 	schemaVersion?: string;
@@ -26,6 +28,7 @@ interface SerializedOutputItem {
 	mime: string;
 	value: unknown;
 	encoding?: 'base64' | 'text';
+	compression?: 'gzip';
 }
 
 function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.NotebookCellOutput[] {
@@ -34,12 +37,17 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 	}
 	return outputs.map(output => {
 		const outputItems = output.outputs?.map(item => {
+			if (item.compression === 'gzip') {
+				const decompressed = zlib.gunzipSync(Buffer.from(String(item.value), 'base64'));
+				const mime = item.mime;
+				return new vscode.NotebookCellOutputItem(decompressed, mime);
+			}
 			if (item.mime === 'text/plain' && typeof item.value === 'string') {
 				return vscode.NotebookCellOutputItem.text(item.value);
 			}
 			if (item.encoding === 'base64') {
 				const decoded = Buffer.from(String(item.value), 'base64');
-				return new vscode.NotebookCellOutputItem(decoded, item.mime);
+				return new vscode.NotebookCellOutputItem(new Uint8Array(decoded), item.mime);
 			}
 			const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
 			return new vscode.NotebookCellOutputItem(encodedValue, item.mime);
@@ -52,10 +60,29 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedC
 	return outputs.map(output => ({
 		outputs: output.items.map(item => {
 			if (TEXT_MIME_TYPES.includes(item.mime)) {
+				const text = new TextDecoder().decode(item.data);
+				if (text.length > COMPRESSION_THRESHOLD) {
+					const compressed = zlib.gzipSync(Buffer.from(text));
+					return {
+						mime: item.mime,
+						value: compressed.toString('base64'),
+						encoding: 'base64',
+						compression: 'gzip'
+					};
+				}
 				return {
 					mime: item.mime,
-					value: new TextDecoder().decode(item.data),
+					value: text,
 					encoding: 'text'
+				};
+			}
+			if (item.data.length > COMPRESSION_THRESHOLD) {
+				const compressed = zlib.gzipSync(item.data);
+				return {
+					mime: item.mime,
+					value: compressed.toString('base64'),
+					encoding: 'base64',
+					compression: 'gzip'
 				};
 			}
 			return {
@@ -68,8 +95,12 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedC
 	}));
 }
 
+/**
+ * Serializes and deserializes Groovy notebook documents (.groovynb files).
+ * Handles conversion between JSON file format and VS Code's NotebookData.
+ */
 export class GroovyContentSerializer implements vscode.NotebookSerializer {
-	public readonly label: string = 'Groovy Content Serializer';
+    public readonly label: string = 'Groovy Content Serializer';
 
 	public async deserializeNotebook(data: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
 		const contents = new TextDecoder().decode(data);

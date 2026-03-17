@@ -10,7 +10,7 @@ import groovy.yaml.YamlBuilder
 
 @groovy.transform.TypeChecked
 @Log
-class Eval {
+class Kernel {
     static {
         def rootLogger = java.util.logging.Logger.getLogger("")
         rootLogger.handlers.each { rootLogger.removeHandler(it) }
@@ -29,35 +29,37 @@ class Eval {
         rootLogger.addHandler(handler)
     }
 
-    private static final String SIGNAL_READY = '\6' //ASCII ACK
-    private static final String SIGNAL_END_OF_MESSAGE = '\3' //ASCII ETX
+    /**
+     * Protocol uses ASCII control characters for message framing with VS Code:
+     * - ACK (\\u0006): Sent by Groovy to signal ready state after startup
+     * - ETX (\\u0003): Used as delimiter - VS Code sends to mark end of code input,
+     *                  Groovy sends to mark end of output response
+     */
+    private static final String SIGNAL_READY = '\6' // ASCII ACK
+    private static final String SIGNAL_END_OF_MESSAGE = '\3' // ASCII ETX
 
     public static void main(args) {
-        new Eval().run(System.in)
+        new Kernel().run(System.in)
     }
 
-    private StringWriter scriptOutputBuf = new StringWriter()
+    private ByteArrayOutputStream scriptOutputBuf = new ByteArrayOutputStream()
     private GroovyShell shell
 
-    Eval() {
-        log.info "Starting Eval initialization..."
-        log.info "Creating Groovy shell..."
+    Kernel() {
         this.shell = resetShell()
-        log.info "Eval initialization complete"
     }
 
     private GroovyShell resetShell() {
-        log.info "Starting GroovyShell reset..."
-        log.info "Creating new StringWriter for output buffer..."
-        scriptOutputBuf = new StringWriter()
-        log.info "Creating new Binding..."
-        Binding shellBinding = new Binding(out: new PrintWriter(scriptOutputBuf))
+        scriptOutputBuf = new ByteArrayOutputStream()
 
-        log.info "Creating new GroovyShell instance..."
+        def out = new PrintStream(scriptOutputBuf, true)
+        System.setOut(out)
+        System.setErr(out)
+
+        Binding shellBinding = new Binding(out: new PrintWriter(out, true))
+
         def shell = new GroovyShell(shellBinding)
-        log.info "Starting macro injection..."
         MacroHelper.injectMacroses(shell)
-        log.info "GroovyShell reset complete"
 
         return shell
     }
@@ -66,7 +68,8 @@ class Eval {
         Scanner scanner = new Scanner(stdin)
         scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
 
-        print SIGNAL_READY
+        System.out.print(SIGNAL_READY)
+        System.out.flush()
 
         try {
             while (true) {
@@ -79,7 +82,8 @@ class Eval {
                     } catch (java.lang.AssertionError e) {
                         print "Assertion failed: \n${e.message}"
                     } finally {
-                        print SIGNAL_END_OF_MESSAGE
+                        System.out.print(SIGNAL_END_OF_MESSAGE)
+                        System.out.flush()
                     }
                 }
             }
@@ -121,11 +125,11 @@ class Eval {
         cleanupOutput()
         shell.parse(code).run()
 
-        return scriptOutputBuf.toString().strip()
+        return scriptOutputBuf.toString("UTF-8").strip()
     }
 
     private cleanupOutput() {
-        scriptOutputBuf.buffer.length = 0
+        scriptOutputBuf.reset()
     }
 }
 
@@ -133,7 +137,6 @@ class Eval {
 class MacroHelper {
     static void injectMacroses(GroovyShell shell) {
         final Binding b = shell.context
-        log.info "Starting macro injection..."
 
         b.setVariable "addClasspath", MacroHelper.&addClasspath.curry(shell)
         b.setVariable "grab", MacroHelper.&grab.curry(shell)
@@ -143,25 +146,16 @@ class MacroHelper {
         b.setVariable "tt", MacroHelper.&tt
         b.setVariable "dir", MacroHelper.&dir
 
-        log.info "Macro injection complete"
-
-        log.info "Loading groovysh.rc..."
         loadGroovyshRc(shell)
-        log.info "Loaded groovysh.rc"
     }
 
     private static void loadGroovyshRc(GroovyShell shell) {
         def groovyshRc = new File("${System.getProperty('user.home')}/.groovy/groovysh.rc")
-        if (groovyshRc.exists()) {
-            log.info "Reading groovysh.rc from ${groovyshRc.absolutePath}"
-            try {
-                shell.evaluate(groovyshRc.text)
-                log.info "Successfully executed groovysh.rc"
-            } catch (Exception e) {
-                log.warning "Failed to execute groovysh.rc: ${e.message}"
-            }
-        } else {
-            log.info "No groovysh.rc found at ${groovyshRc.absolutePath}"
+        if (!groovyshRc.exists()) return
+        try {
+            shell.evaluate(groovyshRc.text)
+        } catch (Exception e) {
+            log.warning "Failed to execute groovysh.rc: ${e.message}"
         }
     }
 
