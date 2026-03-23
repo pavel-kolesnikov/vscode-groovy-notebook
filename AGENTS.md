@@ -52,6 +52,7 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 | types.ts | Shared type definitions | 25 |
 | protocol.ts | Protocol constants (ACK, ETX) | 10 |
 | config.ts | Configuration and timeouts | 46 |
+| logger.ts | Output channel logging | 22 |
 | commands.ts | VS Code command handlers | 52 |
 | statusBar.ts | Kernel status display | 70 |
 | serializer.ts | Notebook file serialization | 161 |
@@ -103,11 +104,10 @@ npm test          # Run tests
 
 ### Debug Logging
 
-Debug logging is controlled by `LOG_ENABLED` constant in:
-- `process.ts` - process lifecycle logging
-- `session.ts` - session management logging
+Logs are written to VS Code's Output panel under "Groovy Notebook" channel.
 
-Set to `true` for debugging, keep `false` in production.
+- View: `View → Output → Select "Groovy Notebook" from dropdown`
+- Implementation: `logger.ts` uses `vscode.window.createOutputChannel()`
 
 ## Known Issues
 

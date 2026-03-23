@@ -7,6 +7,7 @@ import { KernelStatusBar } from './statusBar.js';
 import { registerKernelCommands } from './commands.js';
 import { getGroovyPath } from './config.js';
 import { ProcessConfig } from './types.js';
+import { initLogger } from './logger.js';
 
 async function makeSampleNotebook() {
     const type = GroovyKernelController.type;
@@ -51,6 +52,8 @@ async function exportAsGroovy(notebook: vscode.NotebookDocument) {
 
 export function activate(context: vscode.ExtensionContext) {
     try {
+        const logChannel = initLogger();
+        
         const evalScriptPath = context.asAbsolutePath("src/groovy/Kernel.groovy");
         const groovyPath = getGroovyPath();
         
@@ -66,6 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
         registerKernelCommands(context, registry);
         
         context.subscriptions.push(
+            logChannel,
             vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
             vscode.commands.registerCommand('groovy-notebook.exportAsGroovy', () => {
                 const notebook = vscode.window.activeNotebookEditor?.notebook;
