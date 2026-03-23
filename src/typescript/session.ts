@@ -15,6 +15,7 @@ export class GroovySession implements vscode.Disposable, Executable {
     private status: SessionStatus = 'idle';
     private readonly onStatusChange = new vscode.EventEmitter<SessionStatus>();
     private disposed = false;
+    private interrupted = false;
     
     /**
      * Creates a new Groovy session for a notebook.
@@ -45,6 +46,7 @@ export class GroovySession implements vscode.Disposable, Executable {
     }
     
     public async run(code: string): Promise<ProcessResult> {
+        this.interrupted = false;
         log('Session', `run: called with code length=${code.length}, current process=${this.process ? 'exists' : 'null'}`);
         
         if (!this.process) {
@@ -91,7 +93,12 @@ export class GroovySession implements vscode.Disposable, Executable {
     }
     
     public interrupt(): void {
+        this.interrupted = true;
         this.process?.interrupt();
+    }
+    
+    public wasInterrupted(): boolean {
+        return this.interrupted;
     }
     
     public dispose(): void {

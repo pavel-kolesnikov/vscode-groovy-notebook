@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SessionRegistry } from './session.js';
+import { SessionRegistry, GroovySession } from './session.js';
 import { ProcessError } from './process.js';
 import { ExecutionResult, Executable } from './types.js';
 import { normalizePath } from './pathUtils.js';
@@ -131,7 +131,13 @@ export class GroovyKernelController implements vscode.Disposable {
         if (!this.isCurrentExecution(execution)) return;
 
         if (error) {
-            this.handleError(execution, error);
+            const session = this.currentSession as GroovySession | undefined;
+            if (session?.wasInterrupted()) {
+                this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr('Execution interrupted'));
+                execution.end(false, Date.now());
+            } else {
+                this.handleError(execution, error);
+            }
         } else if (result) {
             this.handleSuccess(execution, result);
         }

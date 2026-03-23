@@ -1,11 +1,21 @@
 import java.util.logging.ConsoleHandler
 import java.util.logging.SimpleFormatter
 import java.lang.reflect.Method
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Proxy
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.CancellationException
+import java.util.concurrent.ExecutionException
 
 import groovy.grape.Grape
 import groovy.lang.GroovyShell
 import groovy.util.logging.Log
 import groovy.yaml.YamlBuilder
+import groovy.transform.ThreadInterrupt
+import org.codehaus.groovy.control.CompilerConfiguration
+import org.codehaus.groovy.control.customizers.ASTTransformationCustomizer
 
 @groovy.transform.TypeChecked
 @Log
@@ -44,10 +54,43 @@ class Kernel {
     private ByteArrayOutputStream scriptOutputBuf = new ByteArrayOutputStream()
     private GroovyShell shell
     private PrintStream originalStdout
+    private ExecutorService executor = Executors.newSingleThreadExecutor()
+    private Future currentFuture = null
+    private volatile boolean shutdownRequested = false
 
     Kernel() {
         this.originalStdout = System.out
         this.shell = resetShell()
+        installSignalHandler()
+    }
+    
+    private void installSignalHandler() {
+        try {
+            def signalClass = Class.forName('sun.misc.Signal')
+            def signalHandlerClass = Class.forName('sun.misc.SignalHandler')
+            def signalConstructor = signalClass.getConstructor(String)
+            def signal = signalConstructor.newInstance('INT')
+            def handler = signalHandlerClass.cast(
+                Proxy.newProxyInstance(
+                    this.class.classLoader,
+                    [signalHandlerClass] as Class[],
+                    { proxy, method, args ->
+                        if (method.name == 'handle') {
+                            if (currentFuture != null && !currentFuture.done) {
+                                currentFuture.cancel(true)
+                            } else {
+                                shutdownRequested = true
+                            }
+                        }
+                        null
+                    } as InvocationHandler
+                )
+            )
+            def handleMethod = signalClass.getMethod('handle', signalClass, signalHandlerClass)
+            handleMethod.invoke(null, signal, handler)
+        } catch (ClassNotFoundException | Exception e) {
+            log.warning "Signal handling not available: ${e.message}"
+        }
     }
 
     private GroovyShell resetShell() {
@@ -59,7 +102,16 @@ class Kernel {
 
         Binding shellBinding = new Binding(out: new PrintWriter(out, true))
 
-        def shell = new GroovyShell(shellBinding)
+        def config = new CompilerConfiguration()
+        config.addCompilationCustomizers(
+            new ASTTransformationCustomizer(ThreadInterrupt)
+        )
+
+        def shell = new GroovyShell(
+            this.class.classLoader,
+            shellBinding,
+            config
+        )
         MacroHelper.injectMacroses(shell)
 
         return shell
@@ -73,7 +125,7 @@ class Kernel {
         originalStdout.flush()
 
         try {
-            while (true) {
+            while (!shutdownRequested) {
                 if (scanner.hasNext()) {
                     String code = scanner.next().strip()
                     try {
@@ -92,6 +144,7 @@ class Kernel {
             }
         } finally {
             scanner.close()
+            executor.shutdown()
         }
     }
 
@@ -126,9 +179,31 @@ class Kernel {
         assert !code.contains("System.exit"), "Refusing to call `System.exit`"
 
         cleanupOutput()
-        shell.parse(code).run()
+        
+        currentFuture = executor.submit {
+            shell.parse(code).run()
+        }
+        
+        try {
+            currentFuture.get()
+            return scriptOutputBuf.toString("UTF-8").strip()
+        } catch (InterruptedException e) {
+            println "Execution interrupted"
+            return scriptOutputBuf.toString("UTF-8").strip()
+        } catch (CancellationException e) {
+            println "Execution cancelled"
+            return scriptOutputBuf.toString("UTF-8").strip()
+        } catch (ExecutionException e) {
+            throw e.cause ?: e
+        } finally {
+            currentFuture = null
+        }
+    }
 
-        return scriptOutputBuf.toString("UTF-8").strip()
+    void cancelCurrent() {
+        if (currentFuture != null && !currentFuture.done) {
+            currentFuture.cancel(true)
+        }
     }
 
     private cleanupOutput() {

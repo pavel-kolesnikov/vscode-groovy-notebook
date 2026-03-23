@@ -1,4 +1,6 @@
 import groovy.test.GroovyTestCase
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class KernelTests extends GroovyTestCase {
     private Kernel eval
@@ -71,5 +73,25 @@ class KernelTests extends GroovyTestCase {
             println map.keySet()
         """)
         assert result.contains("a") && result.contains("b")
+    }
+    
+    void testContextPreservedAfterCancellation() {
+        eval.process("x = 42")
+        
+        def completed = new CountDownLatch(1)
+        def thread = Thread.start {
+            try {
+                eval.process("while(true) { Thread.sleep(50) }")
+            } finally {
+                completed.countDown()
+            }
+        }
+        
+        Thread.sleep(200)
+        eval.cancelCurrent()
+        completed.await(2, TimeUnit.SECONDS)
+        
+        def result = eval.process("println x")
+        assert result.contains("42")
     }
 }
