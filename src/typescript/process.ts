@@ -30,7 +30,6 @@ function formatBuffer(buf: Buffer, maxLen = CONFIG.LOG_PREVIEW_LENGTH): string {
  */
 export class GroovyProcess {
     private static readonly INITIALIZATION_TIMEOUT = CONFIG.TIMEOUT_SPAWN_MS;
-    private static readonly EXECUTION_TIMEOUT = CONFIG.TIMEOUT_EXECUTION_MS;
     private static readonly TERMINATION_TIMEOUT = CONFIG.TIMEOUT_THREAD_JOIN_MS;
     private static readonly MAX_BUFFER_SIZE = CONFIG.MAX_BUFFER_SIZE;
 
@@ -49,12 +48,7 @@ export class GroovyProcess {
     }
     
     public isHealthy(): boolean {
-        if (!this.process || !this.isProcessAlive()) {
-            return false;
-        }
-        const now = Date.now();
-        const timeSinceActivity = now - this.lastActivity;
-        return timeSinceActivity < GroovyProcess.EXECUTION_TIMEOUT * 2;
+        return this.process !== null && this.isProcessAlive();
     }
     
     public async start(): Promise<void> {
@@ -76,7 +70,7 @@ export class GroovyProcess {
         this.lastActivity = Date.now();
         
         try {
-            const result = await this.executeWithTimeout(code);
+            const result = await this.executeCode(code);
             this.lastActivity = Date.now();
             this.setStatus('idle');
             return result;
@@ -318,28 +312,6 @@ export class GroovyProcess {
             const message = code + SIGNAL_END_OF_MESSAGE;
             log('executeCode: writing to stdin, bytes:', message.length);
             proc.stdin?.write(message);
-        });
-    }
-    
-    private executeWithTimeout(code: string): Promise<ProcessResult> {
-        return new Promise((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                reject(this.createError(
-                    `Cell execution timed out after ${GroovyProcess.EXECUTION_TIMEOUT / 1000}s. Consider breaking up long-running code or restart the kernel.`,
-                    '',
-                    ''
-                ));
-            }, GroovyProcess.EXECUTION_TIMEOUT);
-            
-            this.executeCode(code)
-                .then((result) => {
-                    clearTimeout(timeoutId);
-                    resolve(result);
-                })
-                .catch((error) => {
-                    clearTimeout(timeoutId);
-                    reject(error);
-                });
         });
     }
     

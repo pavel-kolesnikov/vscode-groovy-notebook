@@ -113,7 +113,6 @@ Set to `true` for debugging, keep `false` in production.
 
 1. **Process exit detection**: Groovy process abnormal exit not always detected
 2. **Error propagation**: Some errors may not reach UI, kernel appears hung
-3. **Execution timeout**: Long-running cells have no timeout (will be addressed)
 
 ## Release Process
 
