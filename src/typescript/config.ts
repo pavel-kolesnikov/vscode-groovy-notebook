@@ -13,9 +13,12 @@ export const CONFIG = {
   GROOVY_PATH_KEY: 'groovyNotebook.groovyPath',
   JAVA_HOME_KEY: 'groovyNotebook.javaHome',
   DEFAULT_GROOVY_PATH: 'groovy',
-  TIMEOUT_SPAWN_MS: 10_000,          // 10 seconds - max time to wait for Groovy process startup
-  TIMEOUT_THREAD_JOIN_MS: 5_000,    // 5 seconds - max time to wait for process to terminate gracefully
-  MAX_BUFFER_SIZE: 1024 * 1024 * 1024, // 1 GB - max cumulative stdout/stderr buffer per cell execution
+  TIMEOUT_SPAWN_MS: 10_000,
+  TIMEOUT_EXECUTION_MS: 60_000,
+  TIMEOUT_THREAD_JOIN_MS: 5_000,
+  MAX_BUFFER_SIZE: 1024 * 1024 * 1024,
+  LOG_PREVIEW_LENGTH: 100,
+  LOG_PREVIEW_LONG_LENGTH: 200,
 };
 
 /**

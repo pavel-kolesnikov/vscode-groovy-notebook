@@ -18,7 +18,7 @@ function log(...args: unknown[]): void {
     console.log(LOG_PREFIX, '[Process]', new Date().toISOString().substr(11, 12), ...args);
 }
 
-function formatBuffer(buf: Buffer, maxLen = 100): string {
+function formatBuffer(buf: Buffer, maxLen = CONFIG.LOG_PREVIEW_LENGTH): string {
     const str = buf.toString();
     const preview = str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
     return JSON.stringify(preview);
@@ -30,6 +30,7 @@ function formatBuffer(buf: Buffer, maxLen = 100): string {
  */
 export class GroovyProcess {
     private static readonly INITIALIZATION_TIMEOUT = CONFIG.TIMEOUT_SPAWN_MS;
+    private static readonly EXECUTION_TIMEOUT = CONFIG.TIMEOUT_EXECUTION_MS;
     private static readonly TERMINATION_TIMEOUT = CONFIG.TIMEOUT_THREAD_JOIN_MS;
     private static readonly MAX_BUFFER_SIZE = CONFIG.MAX_BUFFER_SIZE;
 
@@ -37,6 +38,7 @@ export class GroovyProcess {
     private status: ProcessStatus = 'idle';
     private readonly onStatusChange = new vscode.EventEmitter<ProcessStatus>();
     private intentionallyTerminated = false;
+    private lastActivity: number = 0;
     
     constructor(private readonly config: ProcessConfig) {}
     
@@ -44,6 +46,15 @@ export class GroovyProcess {
     
     public getStatus(): ProcessStatus {
         return this.status;
+    }
+    
+    public isHealthy(): boolean {
+        if (!this.process || !this.isProcessAlive()) {
+            return false;
+        }
+        const now = Date.now();
+        const timeSinceActivity = now - this.lastActivity;
+        return timeSinceActivity < GroovyProcess.EXECUTION_TIMEOUT * 2;
     }
     
     public async start(): Promise<void> {
@@ -56,15 +67,17 @@ export class GroovyProcess {
     }
     
     public async run(code: string): Promise<ProcessResult> {
-        if (!this.process || !this.isProcessAlive()) {
+        if (!this.process || !this.isProcessAlive() || !this.isHealthy()) {
             this.process = null;
             await this.start();
         }
         
         this.setStatus('busy');
+        this.lastActivity = Date.now();
         
         try {
-            const result = await this.executeCode(code);
+            const result = await this.executeWithTimeout(code);
+            this.lastActivity = Date.now();
             this.setStatus('idle');
             return result;
         } catch (error) {
@@ -257,7 +270,7 @@ export class GroovyProcess {
             };
             
             const onStdout = (chunk: Buffer) => {
-                log('executeCode: stdout chunk:', formatBuffer(chunk, 200));
+                log('executeCode: stdout chunk:', formatBuffer(chunk, CONFIG.LOG_PREVIEW_LONG_LENGTH));
                 stdoutChunks.push(chunk);
                 if (checkBufferLimit(chunk)) {
                     if (settled) return;
@@ -283,7 +296,7 @@ export class GroovyProcess {
             };
             
             const onStderr = (chunk: Buffer) => {
-                log('executeCode: stderr chunk:', formatBuffer(chunk, 200));
+                log('executeCode: stderr chunk:', formatBuffer(chunk, CONFIG.LOG_PREVIEW_LONG_LENGTH));
                 stderrChunks.push(chunk);
                 if (checkBufferLimit(chunk)) {
                     if (settled) return;
@@ -305,6 +318,28 @@ export class GroovyProcess {
             const message = code + SIGNAL_END_OF_MESSAGE;
             log('executeCode: writing to stdin, bytes:', message.length);
             proc.stdin?.write(message);
+        });
+    }
+    
+    private executeWithTimeout(code: string): Promise<ProcessResult> {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                reject(this.createError(
+                    `Cell execution timed out after ${GroovyProcess.EXECUTION_TIMEOUT / 1000}s. Consider breaking up long-running code or restart the kernel.`,
+                    '',
+                    ''
+                ));
+            }, GroovyProcess.EXECUTION_TIMEOUT);
+            
+            this.executeCode(code)
+                .then((result) => {
+                    clearTimeout(timeoutId);
+                    resolve(result);
+                })
+                .catch((error) => {
+                    clearTimeout(timeoutId);
+                    reject(error);
+                });
         });
     }
     
