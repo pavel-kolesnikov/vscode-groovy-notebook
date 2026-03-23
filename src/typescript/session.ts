@@ -4,6 +4,13 @@ import { ExecutionStatus, ExecutionResult, Executable, ProcessConfig } from './t
 
 export type SessionStatus = ExecutionStatus;
 
+const LOG_PREFIX = '[GroovyNB]';
+const LOG_ENABLED = false;
+function log(...args: unknown[]): void {
+    if (!LOG_ENABLED) return;
+    console.log(LOG_PREFIX, '[Session]', new Date().toISOString().substr(11, 12), ...args);
+}
+
 /**
  * Manages a Groovy REPL session for a specific notebook.
  * Each notebook gets its own Groovy process instance.
@@ -37,24 +44,32 @@ export class GroovySession implements vscode.Disposable, Executable {
         }
         
         if (!this.process) {
+            log(`ensureStarted: creating new process for ${this.notebookUri.toString()}`);
             this.process = await this.createProcess();
+            log(`ensureStarted: process created successfully`);
         }
     }
     
     public async run(code: string): Promise<ProcessResult> {
+        log(`run: called with code length=${code.length}, current process=${this.process ? 'exists' : 'null'}`);
+        
         if (!this.process) {
+            log('run: no process, setting status to starting');
             this.setStatus('starting');
         }
         
         await this.ensureStarted();
         
         this.setStatus('busy');
+        log('run: status set to busy, executing code');
         
         try {
             const result = await this.process!.run(code);
+            log(`run: code executed successfully, stdout length=${result.stdout?.length || 0}`);
             this.setStatus('idle');
             return result;
         } catch (error) {
+            log('run: error during execution:', error);
             this.setStatus('error');
             throw error;
         }

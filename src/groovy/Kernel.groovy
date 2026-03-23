@@ -44,8 +44,10 @@ class Kernel {
 
     private ByteArrayOutputStream scriptOutputBuf = new ByteArrayOutputStream()
     private GroovyShell shell
+    private PrintStream originalStdout
 
     Kernel() {
+        this.originalStdout = System.out
         this.shell = resetShell()
     }
 
@@ -68,8 +70,8 @@ class Kernel {
         Scanner scanner = new Scanner(stdin)
         scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
 
-        System.out.print(SIGNAL_READY)
-        System.out.flush()
+        originalStdout.print(SIGNAL_READY)
+        originalStdout.flush()
 
         try {
             while (true) {
@@ -82,8 +84,10 @@ class Kernel {
                     } catch (java.lang.AssertionError e) {
                         print "Assertion failed: \n${e.message}"
                     } finally {
-                        System.out.print(SIGNAL_END_OF_MESSAGE)
-                        System.out.flush()
+                        originalStdout.print(scriptOutputBuf.toString("UTF-8"))
+                        originalStdout.print(SIGNAL_END_OF_MESSAGE)
+                        originalStdout.flush()
+                        cleanupOutput()
                     }
                 }
             }

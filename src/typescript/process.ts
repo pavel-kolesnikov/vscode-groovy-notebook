@@ -11,6 +11,19 @@ export interface ProcessError extends ExecutionError {
     code?: string;
 }
 
+const LOG_PREFIX = '[GroovyNB]';
+const LOG_ENABLED = false;
+function log(...args: unknown[]): void {
+    if (!LOG_ENABLED) return;
+    console.log(LOG_PREFIX, '[Process]', new Date().toISOString().substr(11, 12), ...args);
+}
+
+function formatBuffer(buf: Buffer, maxLen = 100): string {
+    const str = buf.toString();
+    const preview = str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
+    return JSON.stringify(preview);
+}
+
 /**
  * Wrapper around the Groovy subprocess that handles spawning,
  * code execution, and process lifecycle.
@@ -107,42 +120,69 @@ export class GroovyProcess {
                 JAVA_HOME: this.config.javaHome || process.env.JAVA_HOME
             };
             
+            log('Spawning Groovy process:', {
+                groovyPath: this.config.groovyPath,
+                evalScriptPath: this.config.evalScriptPath,
+                cwd: this.config.cwd,
+                javaHome: env.JAVA_HOME
+            });
+            
             const proc = spawn(this.config.groovyPath, [this.config.evalScriptPath], {
                 cwd: this.config.cwd,
                 env
             });
             
             const stdout = proc.stdout;
+            const stderr = proc.stderr;
             
             if (!stdout) {
+                log('ERROR: stdout is null immediately after spawn');
                 this.killProcess(proc);
                 reject(new Error(`Groovy process closed unexpectedly during startup. This may indicate a problem with the Groovy installation or the Groovy Kernel script.`));
                 return;
             }
             
+            log(`Process spawned with PID: ${proc.pid}`);
+            
             const timeoutId = setTimeout(() => {
                 if (settled) return;
                 settled = true;
+                log(`TIMEOUT: No SIGNAL_READY received after ${GroovyProcess.INITIALIZATION_TIMEOUT/1000}s`);
                 this.killProcess(proc);
                 reject(new Error(`Failed to start Groovy shell after ${GroovyProcess.INITIALIZATION_TIMEOUT/1000}s. Verify Groovy is installed and accessible at '${this.config.groovyPath}'. Run 'groovy --version' in terminal to check.`));
             }, GroovyProcess.INITIALIZATION_TIMEOUT);
             
+            let readyReceived = false;
             const onData = (chunk: Buffer) => {
+                log('stdout chunk received:', formatBuffer(chunk));
                 if (chunk.toString().includes(SIGNAL_READY)) {
                     if (settled) return;
+                    readyReceived = true;
                     settled = true;
+                    log('SIGNAL_READY received! Process is ready.');
                     stdout.removeListener('data', onData);
                     clearTimeout(timeoutId);
                     resolve(proc);
                 }
             };
             
+            if (stderr) {
+                stderr.on('data', (chunk: Buffer) => {
+                    log('stderr chunk:', formatBuffer(chunk));
+                });
+            }
+            
             proc.on('error', (error) => {
                 if (settled) return;
                 settled = true;
+                log('Process error event:', error);
                 stdout.removeListener('data', onData);
                 clearTimeout(timeoutId);
                 reject(error);
+            });
+            
+            proc.on('exit', (code, signal) => {
+                log(`Process exit event: code=${code}, signal=${signal}, readyReceived=${readyReceived}`);
             });
             
             stdout.on('data', onData);
@@ -155,6 +195,8 @@ export class GroovyProcess {
                 reject(new Error('No process available'));
                 return;
             }
+            
+            log('executeCode called, code length:', code.length);
             
             const proc = this.process;
             const stdoutChunks: Buffer[] = [];
@@ -174,6 +216,7 @@ export class GroovyProcess {
             const cleanup = () => {
                 if (settled) return;
                 settled = true;
+                log('executeCode: cleaning up listeners');
                 proc.stdout?.removeAllListeners();
                 proc.stderr?.removeAllListeners();
                 proc.removeAllListeners();
@@ -183,6 +226,7 @@ export class GroovyProcess {
                 exitCode = code;
                 if (settled) return;
                 cleanup();
+                log('executeCode: process exited during execution, code=', code);
                 
                 if (code !== null && code !== 0) {
                     reject(this.createError(
@@ -204,6 +248,7 @@ export class GroovyProcess {
             const onError = (error: Error) => {
                 if (settled) return;
                 cleanup();
+                log('executeCode: error event:', error);
                 reject(this.createError(
                     error.message,
                     Buffer.concat(stdoutChunks).toString(),
@@ -212,6 +257,7 @@ export class GroovyProcess {
             };
             
             const onStdout = (chunk: Buffer) => {
+                log('executeCode: stdout chunk:', formatBuffer(chunk, 200));
                 stdoutChunks.push(chunk);
                 if (checkBufferLimit(chunk)) {
                     if (settled) return;
@@ -226,6 +272,7 @@ export class GroovyProcess {
                 if (chunk.includes(SIGNAL_END_OF_MESSAGE)) {
                     if (settled) return;
                     cleanup();
+                    log('executeCode: SIGNAL_END_OF_MESSAGE received, resolving');
                     const stdout = Buffer.concat(stdoutChunks)
                         .toString()
                         .replace(SIGNAL_END_OF_MESSAGE, '')
@@ -236,6 +283,7 @@ export class GroovyProcess {
             };
             
             const onStderr = (chunk: Buffer) => {
+                log('executeCode: stderr chunk:', formatBuffer(chunk, 200));
                 stderrChunks.push(chunk);
                 if (checkBufferLimit(chunk)) {
                     if (settled) return;
@@ -254,7 +302,9 @@ export class GroovyProcess {
             proc.stdout?.on('data', onStdout);
             proc.stderr?.on('data', onStderr);
             
-            proc.stdin?.write(code + SIGNAL_END_OF_MESSAGE);
+            const message = code + SIGNAL_END_OF_MESSAGE;
+            log('executeCode: writing to stdin, bytes:', message.length);
+            proc.stdin?.write(message);
         });
     }
     

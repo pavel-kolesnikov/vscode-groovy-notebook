@@ -122,4 +122,47 @@ class WireProtocolTests extends GroovyTestCase {
         assert scanner.hasNext()
         assert scanner.next() == "code2"
     }
+
+    void testReadySignalGoesToOriginalStdout() {
+        def kernel = new Kernel()
+        def originalOut = new ByteArrayOutputStream()
+        def redirectedOut = new ByteArrayOutputStream()
+        
+        def savedOut = System.out
+        System.setOut(new PrintStream(redirectedOut))
+        
+        try {
+            kernel.originalStdout = new PrintStream(originalOut)
+            kernel.originalStdout.print(SIGNAL_READY)
+            kernel.originalStdout.flush()
+        } finally {
+            System.setOut(savedOut)
+        }
+        
+        assert originalOut.toString() == SIGNAL_READY
+        assert redirectedOut.toString() == ""
+    }
+
+    void testOutputGoesToOriginalStdoutAfterRedirection() {
+        def kernel = new Kernel()
+        def originalOut = new ByteArrayOutputStream()
+        
+        def savedOut = System.out
+        System.setOut(new PrintStream(new ByteArrayOutputStream()))
+        
+        try {
+            kernel.originalStdout = new PrintStream(originalOut)
+            kernel.process("println 'hello'")
+            
+            kernel.originalStdout.print(kernel.scriptOutputBuf.toString("UTF-8"))
+            kernel.originalStdout.print(SIGNAL_END_OF_MESSAGE)
+            kernel.originalStdout.flush()
+        } finally {
+            System.setOut(savedOut)
+        }
+        
+        def output = originalOut.toString()
+        assert output.contains("hello")
+        assert output.contains(SIGNAL_END_OF_MESSAGE)
+    }
 }
