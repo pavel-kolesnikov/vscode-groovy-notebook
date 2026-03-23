@@ -20,8 +20,27 @@ Some utility methods are injected into the binding of the shell:
 - `addClasspath <local path>` --- add given path to the Shell context, making all `*.groovy` & `*.java` files there available for the Notebook.
 - `findClass <className>` --- will try find import path for a given class.
 
-# Limitations, a. k. a. FIXME
+# Limitations
 
-- Not properly detect groovy process abnormal exit in many cases.
-- In some cases errors are not propagated to UI & the kernel seems hang forever.
+See [GitHub Issues](https://github.com/pavel-kolesnikov/vscode-groovy-notebook/issues) for known issues and planned improvements.
+
+# Contributing
+
+See [AGENTS.md](./AGENTS.md) for development setup and architecture overview.
+
+## Development
+
+```bash
+npm install
+npm run compile
+npm test
+```
+
+Press F5 in VS Code to launch Extension Development Host.
+
+## Running Groovy Tests
+
+```bash
+cd src/groovy && groovy KernelTest.groovy
+```
 

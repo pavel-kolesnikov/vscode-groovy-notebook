@@ -5,7 +5,6 @@ import java.lang.reflect.Method
 import groovy.grape.Grape
 import groovy.lang.GroovyShell
 import groovy.util.logging.Log
-import groovy.util.logging.Log
 import groovy.yaml.YamlBuilder
 
 @groovy.transform.TypeChecked
