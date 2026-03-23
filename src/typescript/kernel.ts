@@ -57,15 +57,23 @@ export class GroovyKernelController implements vscode.Disposable {
     }
     
     private async executeCell(cell: vscode.NotebookCell): Promise<void> {
-        const { execution, session } = await this.setupExecution(cell);
-
+        let execution: vscode.NotebookCellExecution | null = null;
+        
         try {
+            const setup = await this.setupExecution(cell);
+            execution = setup.execution;
+            const session = setup.session;
+
             const result = await this.runAndGetResult(session, cell.document.getText());
             this.handleOutputs(execution, result);
         } catch (error) {
-            this.handleOutputs(execution, null, error);
+            if (execution) {
+                this.handleOutputs(execution, null, error);
+            }
         } finally {
-            this.cleanupExecution(execution);
+            if (execution) {
+                this.cleanupExecution(execution);
+            }
         }
     }
 
