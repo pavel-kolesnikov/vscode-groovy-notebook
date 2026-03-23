@@ -68,7 +68,8 @@ class Kernel {
         Scanner scanner = new Scanner(stdin)
         scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
 
-        print SIGNAL_READY
+        System.out.print(SIGNAL_READY)
+        System.out.flush()
 
         try {
             while (true) {
@@ -81,7 +82,8 @@ class Kernel {
                     } catch (java.lang.AssertionError e) {
                         print "Assertion failed: \n${e.message}"
                     } finally {
-                        print SIGNAL_END_OF_MESSAGE
+                        System.out.print(SIGNAL_END_OF_MESSAGE)
+                        System.out.flush()
                     }
                 }
             }
