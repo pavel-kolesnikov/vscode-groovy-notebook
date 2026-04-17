@@ -14,10 +14,11 @@ export class GroovyKernelController implements vscode.Disposable {
     /** Languages supported by this kernel */
     public static readonly supportedLanguages = ['groovy'];
     
-    private executionOrder = 0;
+    private readonly executionOrders = new Map<string, number>();
     private queue: Promise<void> = Promise.resolve();
     private currentExecution: vscode.NotebookCellExecution | null = null;
     private currentSession: Executable | undefined = undefined;
+    private readonly statusSubscription: vscode.Disposable;
     
     private readonly controller: vscode.NotebookController;
     
@@ -36,9 +37,14 @@ export class GroovyKernelController implements vscode.Disposable {
         this.controller.supportsExecutionOrder = true;
         this.controller.interruptHandler = this.interrupt.bind(this);
         this.controller.executeHandler = this.execute.bind(this);
+
+        this.statusSubscription = registry.onDidRestart((uri) => {
+            this.executionOrders.delete(uri.toString());
+        });
     }
     
     public dispose(): void {
+        this.statusSubscription.dispose();
         this.controller.dispose();
     }
     
@@ -84,7 +90,10 @@ export class GroovyKernelController implements vscode.Disposable {
 
         const execution = this.controller.createNotebookCellExecution(cell);
         this.currentExecution = execution;
-        execution.executionOrder = ++this.executionOrder;
+        const notebookKey = cell.notebook.uri.toString();
+        const nextOrder = (this.executionOrders.get(notebookKey) ?? 0) + 1;
+        this.executionOrders.set(notebookKey, nextOrder);
+        execution.executionOrder = nextOrder;
         execution.start(Date.now());
         execution.clearOutput();
 

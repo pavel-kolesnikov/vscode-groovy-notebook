@@ -138,6 +138,7 @@ export class SessionRegistry implements vscode.Disposable {
     private readonly sessions = new Map<string, GroovySession>();
     private readonly sessionSubscriptions = new Map<string, vscode.Disposable>();
     private readonly onDidChangeSessionStatus = new vscode.EventEmitter<{ uri: vscode.Uri; status: SessionStatus }>();
+    private readonly onDidRestartSession = new vscode.EventEmitter<vscode.Uri>();
     
     /**
      * Creates a new session registry.
@@ -146,6 +147,7 @@ export class SessionRegistry implements vscode.Disposable {
     constructor(private readonly baseConfig: Omit<ProcessConfig, 'cwd'>) {}
     
     public readonly onDidChangeStatus = this.onDidChangeSessionStatus.event;
+    public readonly onDidRestart = this.onDidRestartSession.event;
     
     public get(uri: vscode.Uri): GroovySession | undefined {
         return this.sessions.get(uri.toString());
@@ -184,6 +186,7 @@ export class SessionRegistry implements vscode.Disposable {
         const session = this.sessions.get(uri.toString());
         if (session) {
             await session.restart();
+            this.onDidRestartSession.fire(uri);
         }
     }
     
@@ -197,5 +200,6 @@ export class SessionRegistry implements vscode.Disposable {
         }
         this.sessions.clear();
         this.onDidChangeSessionStatus.dispose();
+        this.onDidRestartSession.dispose();
     }
 }
