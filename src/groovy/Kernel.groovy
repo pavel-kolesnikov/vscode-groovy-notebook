@@ -62,6 +62,15 @@ class Kernel {
         this.originalStdout = System.out
         this.shell = resetShell()
         installSignalHandler()
+        warmUpJsonService()
+    }
+
+    private void warmUpJsonService() {
+        try {
+            new groovy.json.JsonSlurper().parseText('[]')
+        } catch (Exception e) {
+            log.warning "Failed to warm up JsonSlurper (needed for FastStringService cache): ${e.message}"
+        }
     }
     
     private void installSignalHandler() {
