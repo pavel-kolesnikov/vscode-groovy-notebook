@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
   },
-  "version": "2.1.0",
+  "version": "2.2.0",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -43,6 +43,11 @@
           "type": "string",
           "default": "",
           "description": "Path to Java installation directory. If not set, will try to use JAVA_HOME environment variable."
+        },
+        "groovyNotebook.compressOutputs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Compress cell outputs in the notebook file. Disable for better readability by external tools and AI agents."
         }
       }
     },

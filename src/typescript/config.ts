@@ -12,6 +12,7 @@ export { ValidationResult, ConfigValidationResult };
 export const CONFIG = {
   GROOVY_PATH_KEY: 'groovyNotebook.groovyPath',
   JAVA_HOME_KEY: 'groovyNotebook.javaHome',
+  COMPRESS_OUTPUTS_KEY: 'groovyNotebook.compressOutputs',
   DEFAULT_GROOVY_PATH: 'groovy',
   TIMEOUT_SPAWN_MS: 10_000,
   TIMEOUT_THREAD_JOIN_MS: 5_000,
@@ -34,6 +35,10 @@ export function getGroovyPath(): string {
 export function getJavaHome(): string | undefined {
   const javaHome = vscode.workspace.getConfiguration().get(CONFIG.JAVA_HOME_KEY) as string;
   return javaHome ? javaHome : undefined;
+}
+
+export function shouldCompressOutputs(): boolean {
+  return vscode.workspace.getConfiguration().get<boolean>(CONFIG.COMPRESS_OUTPUTS_KEY) ?? true;
 }
 
 export const validateGroovyPath = validateGroovyPathImpl;

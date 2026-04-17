@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { TextDecoder, TextEncoder } from 'util';
 import * as zlib from 'zlib';
+import { shouldCompressOutputs } from './config.js';
 
-const SCHEMA_VERSION = '1.0.0';
+const SCHEMA_VERSION = '1.1.0';
 const TEXT_MIME_TYPES = ['text/plain', 'text/html', 'text/markdown', 'application/json'];
 const COMPRESSION_THRESHOLD = 1024;
 
@@ -12,11 +13,16 @@ interface RawNotebookData {
 }
 
 interface RawNotebookCell {
+	id?: string;
 	language: string;
 	value: string;
 	kind: vscode.NotebookCellKind;
 	editable?: boolean;
 	outputs?: SerializedCellOutput[];
+}
+
+function generateCellId(): string {
+	return Math.random().toString(36).substring(2, 10);
 }
 
 interface SerializedCellOutput {
@@ -56,12 +62,12 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 	});
 }
 
-function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedCellOutput[] {
+function serializeCellOutputs(outputs: vscode.NotebookCellOutput[], compress: boolean): SerializedCellOutput[] {
 	return outputs.map(output => ({
 		outputs: output.items.map(item => {
 			if (TEXT_MIME_TYPES.includes(item.mime)) {
 				const text = new TextDecoder().decode(item.data);
-				if (text.length > COMPRESSION_THRESHOLD) {
+				if (compress && text.length > COMPRESSION_THRESHOLD) {
 					const compressed = zlib.gzipSync(Buffer.from(text));
 					return {
 						mime: item.mime,
@@ -76,7 +82,7 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[]): SerializedC
 					encoding: 'text'
 				};
 			}
-			if (item.data.length > COMPRESSION_THRESHOLD) {
+			if (compress && item.data.length > COMPRESSION_THRESHOLD) {
 				const compressed = zlib.gzipSync(item.data);
 				return {
 					mime: item.mime,
@@ -119,11 +125,14 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 		}
 
 		const cells = raw.cells.map(item => {
+			const cellId = item.id || generateCellId();
 			const cellData = new vscode.NotebookCellData(
 				item.kind,
 				item.value,
 				item.language
 			);
+
+			cellData.metadata = { _cellId: cellId };
 
 			if (item.outputs && item.kind === vscode.NotebookCellKind.Code) {
 				cellData.outputs = deserializeCellOutputs(item.outputs);
@@ -136,20 +145,23 @@ export class GroovyContentSerializer implements vscode.NotebookSerializer {
 	}
 
 	public async serializeNotebook(data: vscode.NotebookData, token: vscode.CancellationToken): Promise<Uint8Array> {
+		const compress = shouldCompressOutputs();
 		const contents: RawNotebookData = { 
 			schemaVersion: SCHEMA_VERSION,
 			cells: [] 
 		};
 
 		for (const cell of data.cells) {
+			const cellId = (cell.metadata as Record<string, string>)?.['_cellId'] || generateCellId();
 			const cellData: RawNotebookCell = {
+				id: cellId,
 				kind: cell.kind,
 				language: cell.languageId,
 				value: cell.value
 			};
 
 			if (cell.outputs && cell.outputs.length > 0) {
-				cellData.outputs = serializeCellOutputs(cell.outputs);
+				cellData.outputs = serializeCellOutputs(cell.outputs, compress);
 			}
 
 			contents.cells.push(cellData);
