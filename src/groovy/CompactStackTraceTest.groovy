@@ -1,15 +1,33 @@
-import groovy.test.GroovyTestCase
+// AI Tool Usage BOM
+// ------------------
+//
+// AI Tools Used:
+// - Anthropic Claude Sonnet 4.6
 
-class CompactStackTraceTests extends GroovyTestCase {
+import org.junit.Test
+import org.junit.After
+import static groovy.test.GroovyAssert.shouldFail
 
+class CompactStackTraceTest {
+    private Kernel kernel
+
+    @After
+    void tearDown() {
+        if (kernel != null) {
+            System.setOut(kernel.originalStdout)
+            kernel.@executor.shutdown()
+        }
+    }
+
+    @Test
     void testCompactStackTraceFiltersInternal() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def method = Kernel.class.getDeclaredMethod("compactStackTrace", Throwable)
         method.accessible = true
-        
+
         def e = new RuntimeException("test")
         e.fillInStackTrace()
-        
+
         def result = method.invoke(kernel, e)
         assert result instanceof String
     }

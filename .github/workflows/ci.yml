@@ -18,6 +18,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Setup SDKMAN
+        uses: sdkman/sdkman-action@main
+        with:
+          candidate: groovy
+          version: 5.0.0
+
       - name: Install dependencies
         run: npm ci
 
@@ -27,20 +33,5 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run TypeScript tests
+      - name: Run all tests (TypeScript + Groovy)
         run: npm test
-
-  groovy-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup SDKMAN
-        uses: sdkman/sdkman-action@main
-        with:
-          candidate: groovy
-          version: 5.0.0
-
-      - name: Run Groovy tests
-        run: cd src/groovy && groovy KernelTest.groovy

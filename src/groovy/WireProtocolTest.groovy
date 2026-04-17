@@ -1,166 +1,197 @@
-import groovy.test.GroovyTestCase
+// AI Tool Usage BOM
+// ------------------
+//
+// AI Tools Used:
+// - Anthropic Claude Sonnet 4.6
 
-class WireProtocolTests extends GroovyTestCase {
+import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import static groovy.test.GroovyAssert.shouldFail
+
+class WireProtocolTest {
     private static final String SIGNAL_READY = '\6'
     private static final String SIGNAL_END_OF_MESSAGE = '\3'
 
+    private Kernel kernel
+    private PrintStream savedStdout
+
+    @Before
+    void setUp() {
+        savedStdout = System.out
+    }
+
+    @After
+    void tearDown() {
+        System.setOut(savedStdout)
+        if (kernel != null) {
+            kernel.@executor.shutdown()
+        }
+    }
+
+    @Test
     void testSignalReadyConstant() {
         assert SIGNAL_READY == '\6' as String
         assert SIGNAL_READY.charAt(0) == 6
     }
 
+    @Test
     void testSignalEndOfMessageConstant() {
         assert SIGNAL_END_OF_MESSAGE == '\3' as String
         assert SIGNAL_END_OF_MESSAGE.charAt(0) == 3
     }
 
+    @Test
     void testDelimiterConstants() {
         assert SIGNAL_READY == '\6' as String
         assert SIGNAL_END_OF_MESSAGE == '\3' as String
     }
 
+    @Test
     void testSendsReadySignalOnStartup() {
         def baos = new ByteArrayOutputStream()
         def oldOut = System.out
         System.setOut(new PrintStream(baos))
-        
+
         try {
             print SIGNAL_READY
         } finally {
             System.setOut(oldOut)
         }
-        
+
         assert baos.toString() == SIGNAL_READY
     }
 
+    @Test
     void testProcessCodeWithEndOfMessageDelimiter() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def result = kernel.process("println 'test'")
         assert result.contains("test")
     }
 
+    @Test
     void testEndOfMessageSentAfterProcess() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def result = kernel.process("println 'hello'")
         assert result.contains("hello")
     }
 
+    @Test
     void testErrorMessageFormat() {
-        def kernel = new Kernel()
-        try {
+        kernel = new Kernel()
+        def e = shouldFail(RuntimeException) {
             kernel.process("throw new RuntimeException('error')")
-            fail("Should have thrown exception")
-        } catch (RuntimeException e) {
-            assert e.message == "error"
         }
+        assert e.message == "error"
     }
 
+    @Test
     void testWhitespaceStrippedFromCode() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def result = kernel.process("   println 'stripped'   ")
         assert result.contains("stripped")
     }
 
+    @Test
     void testAssertionErrorHandled() {
-        def kernel = new Kernel()
-        try {
+        kernel = new Kernel()
+        def e = shouldFail(AssertionError) {
             kernel.process("assert false : 'my assertion failed'")
-            fail("Should have thrown AssertionError")
-        } catch (AssertionError e) {
-            assert e.message.contains("my assertion failed")
         }
+        assert e.message.contains("my assertion failed")
     }
 
+    @Test
     void testSystemExitBlockedInProtocol() {
-        def kernel = new Kernel()
-        try {
+        kernel = new Kernel()
+        def e = shouldFail(AssertionError) {
             kernel.process("System.exit(0)")
-            fail("Should have thrown AssertionError")
-        } catch (AssertionError e) {
-            assert e.message.contains("System.exit")
         }
+        assert e.message.contains("System.exit")
     }
 
+    @Test
     void testCodeIsEmptyCheck() {
-        def kernel = new Kernel()
-        try {
+        kernel = new Kernel()
+        def e = shouldFail(AssertionError) {
             kernel.process("")
-            fail("Should have thrown AssertionError")
-        } catch (AssertionError e) {
-            assert e.message.contains("empty") || e.message.contains("Code")
         }
+        assert e.message.contains("empty") || e.message.contains("Code")
     }
 
+    @Test
     void testMultipleSequentialProcessCalls() {
-        def kernel = new Kernel()
-        
+        kernel = new Kernel()
+
         def result1 = kernel.process("println 'first'")
         assert result1.contains("first")
-        
+
         def result2 = kernel.process("println 'second'")
         assert result2.contains("second")
-        
+
         def result3 = kernel.process("println 'third'")
         assert result3.contains("third")
     }
 
+    @Test
     void testProcessMaintainsState() {
-        def kernel = new Kernel()
-        
+        kernel = new Kernel()
+
         kernel.process("x = 42")
         def result = kernel.process("println x")
         assert result.contains("42")
     }
 
+    @Test
     void testScannerDelimiterIsEndOfMessage() {
         def testInput = "code1${SIGNAL_END_OF_MESSAGE}code2${SIGNAL_END_OF_MESSAGE}"
         def scanner = new Scanner(new ByteArrayInputStream(testInput.bytes))
         scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
-        
+
         assert scanner.hasNext()
         assert scanner.next() == "code1"
         assert scanner.hasNext()
         assert scanner.next() == "code2"
     }
 
+    @Test
     void testReadySignalGoesToOriginalStdout() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def originalOut = new ByteArrayOutputStream()
         def redirectedOut = new ByteArrayOutputStream()
-        
-        def savedOut = System.out
+
         System.setOut(new PrintStream(redirectedOut))
-        
+
         try {
             kernel.originalStdout = new PrintStream(originalOut)
             kernel.originalStdout.print(SIGNAL_READY)
             kernel.originalStdout.flush()
         } finally {
-            System.setOut(savedOut)
+            System.setOut(savedStdout)
         }
-        
+
         assert originalOut.toString() == SIGNAL_READY
         assert redirectedOut.toString() == ""
     }
 
+    @Test
     void testOutputGoesToOriginalStdoutAfterRedirection() {
-        def kernel = new Kernel()
+        kernel = new Kernel()
         def originalOut = new ByteArrayOutputStream()
-        
-        def savedOut = System.out
+
         System.setOut(new PrintStream(new ByteArrayOutputStream()))
-        
+
         try {
             kernel.originalStdout = new PrintStream(originalOut)
             kernel.process("println 'hello'")
-            
+
             kernel.originalStdout.print(kernel.scriptOutputBuf.toString("UTF-8"))
             kernel.originalStdout.print(SIGNAL_END_OF_MESSAGE)
             kernel.originalStdout.flush()
         } finally {
-            System.setOut(savedOut)
+            System.setOut(savedStdout)
         }
-        
+
         def output = originalOut.toString()
         assert output.contains("hello")
         assert output.contains(SIGNAL_END_OF_MESSAGE)

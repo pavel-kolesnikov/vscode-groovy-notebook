@@ -56,7 +56,9 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 | commands.ts | VS Code command handlers | 52 |
 | statusBar.ts | Kernel status display | 70 |
 | serializer.ts | Notebook file serialization | 161 |
-| Kernel.groovy | Groovy REPL loop + macros | 433 |
+| Kernel.groovy | Groovy REPL loop | 221 |
+| MacroHelper.groovy | p/pp/tt/dir macros | 257 |
+| PrettyPrintHelper.groovy | YAML serialization | 34 |
 
 ## Classpath Resolution
 
@@ -69,28 +71,28 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 
 ## Running Tests
 
-### TypeScript Tests
+All tests run through `npm test` (TypeScript + Groovy, sequential):
 
 ```bash
-npm test
+npm test            # TS mocha tests, then Groovy tests (if groovy is on PATH)
+npm run test:ts     # TypeScript tests only (Mocha)
+npm run test:groovy # Groovy tests only (skips gracefully if groovy not installed)
 ```
 
-Uses Mocha with ts-node. Tests are in `src/test/*.test.ts`.
+Uses Mocha with ts-node for TS tests (`src/test/*.test.ts`).
+Groovy tests use JUnit 4 (`@Test`), one class per file in `src/groovy/*Test.groovy`.
 
-### Groovy Tests
+### Groovy Test Details
 
-**Critical**: Run from `src/groovy/` directory or use explicit classpath:
+Individual test files (JUnit 4 style, auto-compiled by Groovy):
+- `KernelTest.groovy` - Kernel.process() and cancellation (11 tests)
+- `MacroHelperTest.groovy` - p/pp/tt/dir/renderTable helpers (20 tests)
+- `PrettyPrintHelperTest.groovy` - YAML serialization (8 tests)
+- `CompactStackTraceTest.groovy` - Stack trace filtering (1 test)
+- `WireProtocolTest.groovy` - ACK/ETX protocol constants and behavior (16 tests)
 
-```bash
-# Correct - run from src/groovy directory
-cd src/groovy && groovy KernelTest.groovy
-
-# Alternative - use explicit classpath
-groovy -cp src/groovy src/groovy/KernelTest.groovy
-
-# WRONG - will fail to find classes
-groovy src/groovy/KernelTest.groovy  # ✗
-```
+Run a single suite: `cd src/groovy && groovy KernelTest.groovy`
+Run all via npm: `npm run test:groovy`
 
 ## Making Changes
 

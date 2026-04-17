@@ -1,7 +1,15 @@
-import groovy.test.GroovyTestCase
+// AI Tool Usage BOM
+// ------------------
+//
+// AI Tools Used:
+// - Anthropic Claude Sonnet 4.6
 
-class MacroHelperTests extends GroovyTestCase {
+import org.junit.Test
+import static groovy.test.GroovyAssert.shouldFail
 
+class MacroHelperTest {
+
+    @Test
     void testPSingleArg() {
         def output = captureOutput {
             MacroHelper.p("test")
@@ -9,6 +17,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("test")
     }
 
+    @Test
     void testPMultipleArgs() {
         def output = captureOutput {
             MacroHelper.p("hello", "world", 123)
@@ -16,6 +25,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("hello world 123")
     }
 
+    @Test
     void testPWithNull() {
         def output = captureOutput {
             MacroHelper.p(null)
@@ -23,6 +33,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("null") || output.trim().isEmpty()
     }
 
+    @Test
     void testPPSingleObject() {
         def output = captureOutput {
             MacroHelper.pp([a: 1, b: 2])
@@ -30,6 +41,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("a:") && output.contains("b:")
     }
 
+    @Test
     void testPPMultipleObjects() {
         def output = captureOutput {
             MacroHelper.pp([1, 2])
@@ -37,6 +49,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("1") && output.contains("2")
     }
 
+    @Test
     void testPPWithList() {
         def output = captureOutput {
             MacroHelper.pp([1, 2, 3])
@@ -44,6 +57,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("1") && output.contains("2") && output.contains("3")
     }
 
+    @Test
     void testRenderTableWithMaps() {
         def data = [
             [name: "Alice", age: 30],
@@ -54,23 +68,27 @@ class MacroHelperTests extends GroovyTestCase {
         assert result.contains("30") && result.contains("25")
     }
 
+    @Test
     void testRenderTableEmptyData() {
         def result = MacroHelper.renderTable([])
         assert result == ""
     }
 
+    @Test
     void testRenderTableWithNullValues() {
         def data = [[name: "Test", value: null]]
         def result = MacroHelper.renderTable(data, "name value")
         assert result.contains("Test")
     }
 
+    @Test
     void testRenderTableWithMultilineContent() {
         def data = [[text: "line1\nline2"]]
         def result = MacroHelper.renderTable(data, "text")
         assert result.contains("line1") && result.contains("line2")
     }
 
+    @Test
     void testRenderTableWithCustomColumns() {
         def data = [[a: 1, b: 2, c: 3]]
         def result = MacroHelper.renderTable(data, "a c")
@@ -78,12 +96,14 @@ class MacroHelperTests extends GroovyTestCase {
         assert !result.contains("2")
     }
 
+    @Test
     void testConvertToMapListWithMaps() {
         def data = [[a: 1], [b: 2]]
         def result = MacroHelper.convertToMapList(data)
         assert result == data
     }
 
+    @Test
     void testConvertToMapListWithObjects() {
         def obj = new TestPerson(name: "John", age: 30)
         def result = MacroHelper.convertToMapList([obj])
@@ -91,11 +111,13 @@ class MacroHelperTests extends GroovyTestCase {
         assert result[0].age == 30
     }
 
+    @Test
     void testConvertToMapListWithCollection() {
         def result = MacroHelper.convertToMapList([[1, 2, 3]])
         assert result[0].value == [1, 2, 3]
     }
 
+    @Test
     void testFormatMethodSignatureSimple() {
         def method = String.class.getMethod("substring", int)
         def result = MacroHelper.formatMethodSignature(method)
@@ -103,6 +125,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert result.contains("int")
     }
 
+    @Test
     void testFormatMethodSignatureWithParams() {
         def method = String.class.getMethod("lastIndexOf", String.class, int)
         def result = MacroHelper.formatMethodSignature(method)
@@ -111,6 +134,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert result.contains("int")
     }
 
+    @Test
     void testDirForObject() {
         def output = captureOutput {
             MacroHelper.dir(new TestPerson(name: "Test", age: 25))
@@ -119,6 +143,7 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("name") || output.contains("age")
     }
 
+    @Test
     void testDirForString() {
         def output = captureOutput {
             MacroHelper.dir("test string")
@@ -126,12 +151,14 @@ class MacroHelperTests extends GroovyTestCase {
         assert output.contains("String")
     }
 
+    @Test
     void testAddClasspathInvalid() {
         shouldFail(AssertionError) {
             MacroHelper.addClasspath(new GroovyShell(), "/nonexistent/path")
         }
     }
 
+    @Test
     void testFindClassReturnsList() {
         def shell = new GroovyShell()
         def result = MacroHelper.findClass(shell, "String")

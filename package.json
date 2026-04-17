@@ -98,7 +98,9 @@
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
     "dogfood": "npm run pack && code --install-extension groovy-notebook-*.vsix",
-    "test": "mocha"
+    "test:ts": "mocha",
+    "test:groovy": "node scripts/test-groovy.mjs",
+    "test": "npm run test:ts && npm run test:groovy"
   },
   "devDependencies": {
     "@types/mocha": "^8",
