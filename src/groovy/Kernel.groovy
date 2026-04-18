@@ -95,8 +95,14 @@ class Kernel {
         }
     }
 
+    private static class FlushingWriter extends PrintWriter {
+        FlushingWriter(OutputStream out) { super(out, true) }
+        @Override void write(char[] buf, int off, int len) { super.write(buf, off, len); super.flush() }
+        @Override void write(String s, int off, int len) { super.write(s, off, len); super.flush() }
+    }
+
     private GroovyShell createShell() {
-        Binding shellBinding = new Binding(out: new PrintWriter(out, true))
+        Binding shellBinding = new Binding(out: new FlushingWriter(out))
 
         def config = new CompilerConfiguration()
         config.addCompilationCustomizers(
