@@ -54,7 +54,7 @@ export class GroovyProcess {
         this.process = await this.spawn();
     }
     
-    public async run(code: string): Promise<ProcessResult> {
+    public async run(code: string, onOutput?: (chunk: string) => void): Promise<ProcessResult> {
         if (!this.process || !this.isProcessAlive() || !this.isHealthy()) {
             this.process = null;
             await this.start();
@@ -64,7 +64,7 @@ export class GroovyProcess {
         this.lastActivity = Date.now();
         
         try {
-            const result = await this.executeCode(code);
+            const result = await this.executeCode(code, onOutput);
             this.lastActivity = Date.now();
             this.setStatus('idle');
             return result;
@@ -197,7 +197,7 @@ export class GroovyProcess {
         });
     }
     
-    private executeCode(code: string): Promise<ProcessResult> {
+    private executeCode(code: string, onOutput?: (chunk: string) => void): Promise<ProcessResult> {
         return new Promise((resolve, reject) => {
             if (!this.process) {
                 reject(new Error('No process available'));
@@ -279,6 +279,8 @@ export class GroovyProcess {
                 }
                 if (chunk.includes(SIGNAL_END_OF_MESSAGE)) {
                     if (settled) return;
+                    const text = chunk.toString().replace(SIGNAL_END_OF_MESSAGE, '');
+                    if (text && onOutput) onOutput(text);
                     cleanup();
                     log('Process', 'executeCode: SIGNAL_END_OF_MESSAGE received, resolving');
                     const stdout = Buffer.concat(stdoutChunks)
@@ -287,6 +289,8 @@ export class GroovyProcess {
                         .trim();
                     const stderr = Buffer.concat(stderrChunks).toString();
                     resolve({ stdout, stderr, exitCode });
+                } else {
+                    if (onOutput) onOutput(chunk.toString());
                 }
             };
             

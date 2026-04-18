@@ -21,6 +21,6 @@ export interface ExecutionError extends Error {
 }
 
 export interface Executable {
-    run(code: string): Promise<ExecutionResult>;
+    run(code: string, onOutput?: (chunk: string) => void): Promise<ExecutionResult>;
     interrupt(): void;
 }

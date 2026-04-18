@@ -64,17 +64,30 @@ export class GroovyKernelController implements vscode.Disposable {
     
     private async executeCell(cell: vscode.NotebookCell): Promise<void> {
         let execution: vscode.NotebookCellExecution | null = null;
-        
+
         try {
             const setup = await this.setupExecution(cell);
             execution = setup.execution;
             const session = setup.session;
 
-            const result = await this.runAndGetResult(session, cell.document.getText());
-            this.handleOutputs(execution, result);
+            let streamedOutput = '';
+            let streamed = false;
+
+            const onOutput = (chunk: string) => {
+                streamed = true;
+                streamedOutput += chunk;
+                execution!.replaceOutput([
+                    new vscode.NotebookCellOutput([
+                        vscode.NotebookCellOutputItem.stdout(streamedOutput)
+                    ])
+                ]);
+            };
+
+            const result = await session.run(cell.document.getText(), onOutput);
+            this.handleOutputs(execution, result, streamed);
         } catch (error) {
             if (execution) {
-                this.handleOutputs(execution, null, error);
+                this.handleOutputs(execution, null, false, error);
             }
         } finally {
             if (execution) {
@@ -104,19 +117,15 @@ export class GroovyKernelController implements vscode.Disposable {
         return { execution, session };
     }
 
-    private async runAndGetResult(session: Executable, code: string): Promise<ExecutionResult> {
-        return await session.run(code);
-    }
-
     private appendOutput(execution: vscode.NotebookCellExecution, ...items: vscode.NotebookCellOutputItem[]): void {
         execution.appendOutput([new vscode.NotebookCellOutput(items)]);
     }
 
-    private handleError(execution: vscode.NotebookCellExecution, error: unknown): void {
+    private handleError(execution: vscode.NotebookCellExecution, error: unknown, streamed: boolean): void {
         const processError = error as ProcessError;
         const message = processError.message || 'Unknown error';
 
-        if (processError.stdout?.trim()) {
+        if (!streamed && processError.stdout?.trim()) {
             this.appendOutput(execution, vscode.NotebookCellOutputItem.stdout(processError.stdout));
         }
 
@@ -124,19 +133,17 @@ export class GroovyKernelController implements vscode.Disposable {
         execution.end(false, Date.now());
     }
 
-    private handleSuccess(execution: vscode.NotebookCellExecution, result: ExecutionResult): void {
+    private handleSuccess(execution: vscode.NotebookCellExecution, result: ExecutionResult, streamed: boolean): void {
         if (result.stderr?.trim()) {
             this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr(result.stderr));
         }
-
-        if (result.stdout?.trim()) {
+        if (!streamed && result.stdout?.trim()) {
             this.appendOutput(execution, vscode.NotebookCellOutputItem.stdout(result.stdout));
         }
-
         execution.end(true, Date.now());
     }
 
-    private handleOutputs(execution: vscode.NotebookCellExecution, result: ExecutionResult | null, error?: unknown): void {
+    private handleOutputs(execution: vscode.NotebookCellExecution, result: ExecutionResult | null, streamed: boolean, error?: unknown): void {
         if (!this.isCurrentExecution(execution)) return;
 
         if (error) {
@@ -145,10 +152,10 @@ export class GroovyKernelController implements vscode.Disposable {
                 this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr('Execution interrupted'));
                 execution.end(false, Date.now());
             } else {
-                this.handleError(execution, error);
+                this.handleError(execution, error, streamed);
             }
         } else if (result) {
-            this.handleSuccess(execution, result);
+            this.handleSuccess(execution, result, streamed);
         }
     }
 

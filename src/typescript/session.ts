@@ -45,7 +45,7 @@ export class GroovySession implements vscode.Disposable, Executable {
         }
     }
     
-    public async run(code: string): Promise<ProcessResult> {
+    public async run(code: string, onOutput?: (chunk: string) => void): Promise<ProcessResult> {
         this.interrupted = false;
         log('Session', `run: called with code length=${code.length}, current process=${this.process ? 'exists' : 'null'}`);
         
@@ -60,7 +60,7 @@ export class GroovySession implements vscode.Disposable, Executable {
         log('Session', 'run: status set to busy, executing code');
         
         try {
-            const result = await this.process!.run(code);
+            const result = await this.process!.run(code, onOutput);
             log('Session', `run: code executed successfully, stdout length=${result.stdout?.length || 0}`);
             this.setStatus('idle');
             return result;
