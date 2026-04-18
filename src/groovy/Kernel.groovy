@@ -38,21 +38,23 @@ class Kernel {
     private static final String SIGNAL_READY = '\6'
     private static final String SIGNAL_END_OF_MESSAGE = '\3'
 
-    public static void main(args) {
-        new Kernel().run(System.in)
+    static void main(args) {
+        System.setErr(System.out)
+        def kernel = new Kernel(System.in, System.out)
+        installSignalHandler(kernel)
+        kernel.run()
     }
-
-    private ByteArrayOutputStream scriptOutputBuf = new ByteArrayOutputStream()
+    private final InputStream stdin
+    private final PrintStream out
     private GroovyShell shell
-    private PrintStream originalStdout
     private ExecutorService executor = Executors.newSingleThreadExecutor()
     private Future currentFuture = null
     private volatile boolean shutdownRequested = false
 
-    Kernel() {
-        this.originalStdout = System.out
-        this.shell = resetShell()
-        installSignalHandler()
+    Kernel(InputStream in, OutputStream out) {
+        this.stdin = in
+        this.out = new PrintStream(out, true)
+        this.shell = createShell()
         warmUpJsonService()
     }
 
@@ -63,8 +65,8 @@ class Kernel {
             log.warning "Failed to warm up JsonSlurper (needed for FastStringService cache): ${e.message}"
         }
     }
-    
-    private void installSignalHandler() {
+
+    private static void installSignalHandler(Kernel kernel) {
         try {
             def signalClass = Class.forName('sun.misc.Signal')
             def signalHandlerClass = Class.forName('sun.misc.SignalHandler')
@@ -72,14 +74,14 @@ class Kernel {
             def signal = signalConstructor.newInstance('INT')
             def handler = signalHandlerClass.cast(
                 Proxy.newProxyInstance(
-                    this.class.classLoader,
+                    Kernel.class.classLoader,
                     [signalHandlerClass] as Class[],
                     { proxy, method, args ->
                         if (method.name == 'handle') {
-                            if (currentFuture != null && !currentFuture.done) {
-                                currentFuture.cancel(true)
+                            if (kernel.interrupt()) {
+                                // interrupted running future
                             } else {
-                                shutdownRequested = true
+                                kernel.shutdown()
                             }
                         }
                         null
@@ -93,13 +95,7 @@ class Kernel {
         }
     }
 
-    private GroovyShell resetShell() {
-        scriptOutputBuf = new ByteArrayOutputStream()
-
-        def out = new PrintStream(scriptOutputBuf, true)
-        System.setOut(out)
-        System.setErr(out)
-
+    private GroovyShell createShell() {
         Binding shellBinding = new Binding(out: new PrintWriter(out, true))
 
         def config = new CompilerConfiguration()
@@ -117,12 +113,12 @@ class Kernel {
         return shell
     }
 
-    private run(java.io.InputStream stdin) {
+    void run() {
         Scanner scanner = new Scanner(stdin)
         scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
 
-        originalStdout.print(SIGNAL_READY)
-        originalStdout.flush()
+        out.print(SIGNAL_READY)
+        out.flush()
 
         try {
             while (!shutdownRequested) {
@@ -131,14 +127,12 @@ class Kernel {
                     try {
                         process(code)
                     } catch (Exception e) {
-                        print "Evaluation failed:\n${e.getClass().name}: ${e.message}\n${compactStackTrace(e)}"
+                        out.println "Evaluation failed:\n${e.getClass().name}: ${e.message}\n${compactStackTrace(e)}"
                     } catch (java.lang.AssertionError e) {
-                        print "Assertion failed: \n${e.message}"
+                        out.println "Assertion failed: \n${e.message}"
                     } finally {
-                        originalStdout.print(scriptOutputBuf.toString("UTF-8"))
-                        originalStdout.print(SIGNAL_END_OF_MESSAGE)
-                        originalStdout.flush()
-                        cleanupOutput()
+                        out.print(SIGNAL_END_OF_MESSAGE)
+                        out.flush()
                     }
                 }
             }
@@ -173,28 +167,23 @@ class Kernel {
         return result.join('\n')
     }
 
-    private String process(String code) {
+    private void process(String code) {
         assert code, "Code is empty"
         assert !code.isEmpty(), "Code is empty"
         assert !code.contains("System.exit"), "Refusing to call `System.exit`"
 
         code = preprocessCommand(code)
 
-        cleanupOutput()
-        
         currentFuture = executor.submit {
             shell.parse(code).run()
         }
         
         try {
             currentFuture.get()
-            return scriptOutputBuf.toString("UTF-8").strip()
         } catch (InterruptedException e) {
-            println "Execution interrupted"
-            return scriptOutputBuf.toString("UTF-8").strip()
+            out.println "Execution interrupted"
         } catch (CancellationException e) {
-            println "Execution cancelled"
-            return scriptOutputBuf.toString("UTF-8").strip()
+            out.println "Execution cancelled"
         } catch (ExecutionException e) {
             throw e.cause ?: e
         } finally {
@@ -202,19 +191,21 @@ class Kernel {
         }
     }
 
-    String preprocessCommand(String code) {
+    static String preprocessCommand(String code) {
         if (code == '/help' || code == 'help') return 'help()'
         if (code.startsWith('/help ')) return "help('${code.substring(6).strip()}')"
         return code
     }
 
-    void cancelCurrent() {
+    boolean interrupt() {
         if (currentFuture != null && !currentFuture.done) {
             currentFuture.cancel(true)
+            return true
         }
+        return false
     }
 
-    private cleanupOutput() {
-        scriptOutputBuf.reset()
+    void shutdown() {
+        shutdownRequested = true
     }
 }
