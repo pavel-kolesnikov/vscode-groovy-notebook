@@ -1,9 +1,3 @@
-// AI Tool Usage BOM
-// ------------------
-//
-// AI Tools Used:
-// - Anthropic Claude Sonnet 4.6
-
 import org.junit.Test
 import static groovy.test.GroovyAssert.shouldFail
 
