@@ -47,7 +47,7 @@ The key architectural insight is the **split between host and backend**:
 
 The two processes communicate through a deliberately simple **wire protocol**
 built on two ASCII control characters -- easy to understand, easy to debug.
-The trade-off: no streaming output, no rich messaging.
+The trade-off: no rich messaging.
 
 ---
 
@@ -137,10 +137,10 @@ Understanding these invariants will save you hours of debugging:
    relative paths in cells (e.g., `addClasspath 'lib'`) resolve from where
    the `.groovynb` file lives, not from the workspace root.
 
-4. **Stdout is hijacked.** The Groovy kernel redirects `System.out` and
-   `System.err` into a `ByteArrayOutputStream` so it can capture cell output.
-   The original stdout (the pipe to VS Code) is saved as `originalStdout`
-   and used exclusively for protocol signaling.
+4. **Streams are injected.** The `Kernel` constructor takes `(InputStream,
+   OutputStream)` parameters — a pure black-box design.  Output streams
+   directly to the pipe as it is produced, enabling real-time streaming to
+   the cell output in VS Code.
 
 ---
 
@@ -254,8 +254,9 @@ VS Code                              Groovy Process
 ```
 
 Key implementation detail: `GroovyProcess.executeCode()` (process.ts:200)
-attaches listeners to `proc.stdout` and waits for an ETX marker in the
-output stream.  When found, it resolves the promise with the accumulated
+attaches listeners to `proc.stdout` and streams each chunk to the cell
+output in real time via an `onOutput` callback.  When the ETX marker is
+seen in the output stream, it resolves the promise with the accumulated
 stdout/stderr.  A `settled` flag prevents double-resolution from race
 conditions (e.g., ETX and process exit arriving simultaneously).
 
@@ -273,10 +274,13 @@ VS Code                              Groovy Process
   |<-------------------------------------|
 ```
 
-The Groovy kernel installs a `sun.misc.Signal` handler for SIGINT
-(`Kernel.groovy:67-94`).  When SIGINT arrives, it cancels the running
-`Future` on the executor thread.  The `@ThreadInterrupt` AST transform
-ensures that Groovy code checks for interruption at statement boundaries.
+Signal handling is externalized: the `Kernel` exposes `interrupt()` and
+`shutdown()` methods, and `static main` installs a `sun.misc.Signal`
+handler for SIGINT (`Kernel.groovy:70-97`).  When SIGINT arrives, the
+handler calls `interrupt()` to cancel the running `Future`; if no future
+is active, it calls `shutdown()` to exit the REPL loop.  The
+`@ThreadInterrupt` AST transform ensures that Groovy code checks for
+interruption at statement boundaries.
 
 ---
 
@@ -415,19 +419,19 @@ This is the heart of the backend.  Let's walk through it step by step.
 #### Initialization (constructor)
 
 ```groovy
-Kernel() {
-    this.originalStdout = System.out      // Save the real stdout (pipe to VS Code)
-    this.shell = resetShell()             // Create GroovyShell with redirected output
-    installSignalHandler()                // Handle SIGINT for cell cancellation
-    warmUpJsonService()                   // Pre-load FastStringService (see below)
+Kernel(InputStream in, OutputStream out) {
+    this.stdin = in
+    this.out = new PrintStream(out, true)
+    this.shell = createShell()
+    warmUpJsonService()
 }
 ```
 
-**Why redirect stdout?** The REPL needs to capture everything the user's
-Groovy code prints.  It redirects `System.out` and `System.err` into a
-`ByteArrayOutputStream`.  After each cell executes, the buffer contents are
-sent to the *original* stdout (the pipe to VS Code), then the buffer is
-reset.
+**Why inject streams?** The Kernel is a pure black box: it reads code from
+`stdin` and writes output to `out`.  By taking streams as constructor
+parameters, the Kernel is testable without touching `System.out`.
+`static main` handles OS integration — it passes `System.in` and
+`System.out` and installs the SIGINT handler.
 
 **Why `warmUpJsonService()`?** Groovy's `FastStringService` (the JSON
 backend) is loaded via `java.util.ServiceLoader`, which uses the current
@@ -446,55 +450,60 @@ has the correct TCCL) before ACK is sent and any user code runs.  After
 that, all threads read the already-set `INSTANCE` field and never touch
 `ServiceLoader` again.  (Added in commit `a40dda0`.)
 
-#### The REPL Loop (`run()`, line 120)
+#### The REPL Loop (`run()`, line 117)
 
 ```groovy
-private run(InputStream stdin) {
+void run() {
     Scanner scanner = new Scanner(stdin)
-    scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)   // Split input on ETX
+    scanner.useDelimiter(SIGNAL_END_OF_MESSAGE)
 
-    originalStdout.print(SIGNAL_READY)              // Send ACK
-    originalStdout.flush()
+    out.print(SIGNAL_READY)
+    out.flush()
 
-    while (!shutdownRequested) {
-        if (scanner.hasNext()) {
-            String code = scanner.next().strip()
-            try {
-                process(code)
-            } catch (Exception e) {
-                print "Evaluation failed:\n${e.getClass().name}: ..."
-            } finally {
-                originalStdout.print(scriptOutputBuf.toString("UTF-8"))
-                originalStdout.print(SIGNAL_END_OF_MESSAGE)  // Send ETX
-                originalStdout.flush()
-                cleanupOutput()
+    try {
+        while (!shutdownRequested) {
+            if (scanner.hasNext()) {
+                String code = scanner.next().strip()
+                try {
+                    process(code)
+                } catch (Exception e) {
+                    out.println "Evaluation failed:\n${e.getClass().name}: ..."
+                } catch (java.lang.AssertionError e) {
+                    out.println "Assertion failed: \n${e.message}"
+                } finally {
+                    out.print(SIGNAL_END_OF_MESSAGE)
+                    out.flush()
+                }
             }
         }
+    } finally {
+        scanner.close()
+        executor.shutdown()
     }
 }
 ```
 
-The `finally` block guarantees that ETX is always sent, even on errors -- 
-without it, the TypeScript side would hang forever waiting for the end-of-message marker.
+The `finally` block guarantees that ETX is always sent, even on errors --
+without it, the TypeScript side would hang forever waiting for the end-of-message
+marker.  Output streams directly to `out` during execution (no buffering).
 
-#### Code Execution (`process()`, line 176)
+#### Code Execution (`process()`, line 171)
 
 ```groovy
-private String process(String code) {
+private void process(String code) {
     assert code, "Code is empty"
     assert !code.contains("System.exit"), "Refusing to call System.exit"
 
-    code = preprocessCommand(code)    // "/help" -> "help()"
-    cleanupOutput()
+    code = preprocessCommand(code)
 
     currentFuture = executor.submit {
-        shell.parse(code).run()       // Parse + run in executor thread
+        shell.parse(code).run()
     }
 
     try {
-        currentFuture.get()           // Block until done
+        currentFuture.get()
     } catch (CancellationException e) {
-        println "Execution cancelled"
+        out.println "Execution cancelled"
     }
 }
 ```
@@ -506,13 +515,13 @@ Key design choices:
 
 2. **Code runs on a single-threaded executor.** This gives us cancellation
    via `Future.cancel(true)`.  The `@ThreadInterrupt` AST transformation
-   (applied in `resetShell()`) makes Groovy check for thread interruption
+   (applied in `createShell()`) makes Groovy check for thread interruption
    at loop boundaries and statement boundaries.
 
 3. **State is preserved between cells.** The `GroovyShell` instance is reused,
    so `x = 42` in one cell is available in the next.
 
-#### Stack Trace Compaction (`compactStackTrace()`, line 151)
+#### Stack Trace Compaction (`compactStackTrace()`, line 146)
 
 Groovy generates deep stack traces with many internal frames from
 `org.codehaus.groovy.*` and `groovy.lang.*`.  The `compactStackTrace()`
@@ -675,11 +684,11 @@ The test runner (`scripts/test-groovy.mjs`) discovers `*Test.groovy` files
 and runs each one via `execFileSync("groovy", [file])`.  It skips gracefully
 if `groovy` is not found on PATH.
 
-**Note on stdout hijacking**: Because `Kernel.groovy` redirects `System.out`,
-Groovy tests must carefully save and restore the original stdout stream
-in `@Before`/`@After` methods.  Tests that create a `Kernel` instance
-directly access private fields (`kernel.@executor`) to clean up the executor
-service.
+**Note on Kernel instantiation**: Because `Kernel` takes `InputStream` and
+`OutputStream` as constructor parameters, tests provide in-memory streams
+(e.g., `ByteArrayInputStream` / `ByteArrayOutputStream`).  Tests that
+create a `Kernel` instance directly access private fields
+(`kernel.@executor`) to clean up the executor service.
 
 ### Running Everything
 
@@ -865,17 +874,17 @@ from `child_process`, which may not fire in all edge cases.  The health
 check in `isProcessAlive()` (process.ts:96) uses `kill(pid, 0)` to probe
 the process.
 
-### Stdout Hijacking Complicates Testing
+### Kernel Instantiation in Tests
 
-Because `Kernel.groovy` redirects `System.out`, Groovy tests must carefully
-save and restore the original stream.  Tests that instantiate `Kernel`
-directly must also shut down the executor service to avoid thread leaks.
+Tests that instantiate `Kernel` directly pass in-memory streams and must
+shut down the executor service to avoid thread leaks.
 
-### No Streaming Output
+### Partial-Line Buffering
 
-The wire protocol is request-response: the entire cell output is sent as a
-single message after execution completes.  A `Thread.sleep(10000)` cell will
-show nothing for 10 seconds.
+Output streams to VS Code in real time, but `print()` calls without a
+trailing newline may not flush immediately.  The `PrintStream` is
+constructed with `autoFlush`, which flushes on `println()` but not on
+bare `print()`.
 
 ### Classpath Is Relative to the Notebook
 

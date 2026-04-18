@@ -28,6 +28,7 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 |   ACK (0x06) = ready signal    ETX (0x03) = message delimiter   |
 +-----------------------------------------------------------------+
 |  Groovy Backend (Kernel.groovy)                                  |
+|  Kernel(InputStream in, OutputStream out)                        |
 |  +-------------+  +-------------+  +----------------+           |
 |  |   Kernel    |  | MacroHelper |  |PrettyPrintHelp|           |
 |  | (REPL loop) |  | (p/pp/tt/...)|  |(YAML serialize)|           |
@@ -40,25 +41,26 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 - One GroovyProcess per notebook (via SessionRegistry)
 - Cells execute sequentially (queue in kernel.ts)
 - Protocol: VS Code sends `code + ETX`, Groovy responds with `output + ETX`
+- Kernel takes `InputStream`/`OutputStream` — pure black box, no `System.out` hijacking
 
 ## Key Files
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| extension.ts | Entry point, DI wiring | 88 |
-| kernel.ts | Notebook controller, cell execution | 142 |
-| session.ts | Per-notebook session management | 200 |
-| process.ts | Subprocess lifecycle, wire protocol | 339 |
-| types.ts | Shared type definitions | 25 |
+| extension.ts | Entry point, DI wiring | 95 |
+| kernel.ts | Notebook controller, cell execution | 172 |
+| session.ts | Per-notebook session management | 205 |
+| process.ts | Subprocess lifecycle, wire protocol | 351 |
+| types.ts | Shared type definitions | 26 |
 | protocol.ts | Protocol constants (ACK, ETX) | 10 |
-| config.ts | Configuration and timeouts | 46 |
+| config.ts | Configuration and timeouts | 53 |
 | logger.ts | Output channel logging | 22 |
 | commands.ts | VS Code command handlers | 52 |
 | statusBar.ts | Kernel status display | 70 |
-| serializer.ts | Notebook file serialization | 161 |
-| Kernel.groovy | Groovy REPL loop | 221 |
-| MacroHelper.groovy | p/pp/tt/dir macros | 257 |
-| PrettyPrintHelper.groovy | YAML serialization | 34 |
+| serializer.ts | Notebook file serialization | 173 |
+| Kernel.groovy | Groovy REPL loop | 212 |
+| MacroHelper.groovy | p/pp/tt/dir macros | 339 |
+| PrettyPrintHelper.groovy | YAML serialization | 35 |
 
 ## Classpath Resolution
 
@@ -115,6 +117,7 @@ Logs are written to VS Code's Output panel under "Groovy Notebook" channel.
 
 1. **Process exit detection**: Groovy process abnormal exit not always detected
 2. **Error propagation**: Some errors may not reach UI, kernel appears hung
+3. **Partial-line buffering**: `print()` without newline may not flush immediately (line-buffered via PrintStream autoFlush)
 
 ## Release Process
 
