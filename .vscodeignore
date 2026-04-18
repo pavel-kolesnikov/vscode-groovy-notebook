@@ -12,3 +12,6 @@ vsc-extension-quickstart.md
 **/*.vsix
 **/*.class
 **/*Test*.groovy
+**/*.groovy
+!src/groovy/Kernel.groovy
+!src/groovy/kernel-helpers.jar
