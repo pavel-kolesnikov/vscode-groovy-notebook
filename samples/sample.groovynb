@@ -137,24 +137,13 @@
       "id": "9me4rnom",
       "kind": 2,
       "language": "groovy",
-      "value": "help 'pp'",
-      "outputs": [
-        {
-          "outputs": [
-            {
-              "mime": "application/vnd.code.notebook.stdout",
-              "value": "cHAgPGFyZ3MuLi4+CiAgUHJldHR5LXByaW50IGFzIFlBTUwgKHN0cmlwcyB0cmFuc2llbnQvc3RhdGljIGZpZWxkcykKCiAgRXhhbXBsZToKICAgIHBwIFthOiAxLCBiOiBbYzogMl1dCgogIE91dHB1dDoKICAgIGE6IDEKICAgIGI6CiAgICAgIGM6IDI=",
-              "encoding": "base64"
-            }
-          ]
-        }
-      ]
+      "value": "help 'pp'"
     },
     {
       "id": "9rclwkrm",
       "kind": 2,
       "language": "groovy",
-      "value": ""
+      "value": "/help"
     }
   ]
 }
