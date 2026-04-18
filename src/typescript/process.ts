@@ -128,7 +128,7 @@ export class GroovyProcess {
                 javaHome: env.JAVA_HOME
             });
             
-            const proc = spawn(this.config.groovyPath, [this.config.evalScriptPath], {
+            const proc = spawn(this.config.groovyPath, this.config.evalScriptPath, {
                 cwd: this.config.cwd,
                 env
             });

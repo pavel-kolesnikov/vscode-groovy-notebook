@@ -82,18 +82,18 @@ describe('types.ts interfaces', () => {
         it('should define required groovyPath, evalScriptPath, and cwd', () => {
             const config: ProcessConfig = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/GroovyKernel.groovy',
+                evalScriptPath: ['/path/to/GroovyKernel.groovy'],
                 cwd: '/workspace'
             };
             assert.strictEqual(config.groovyPath, '/usr/bin/groovy');
-            assert.strictEqual(config.evalScriptPath, '/path/to/GroovyKernel.groovy');
+            assert.deepStrictEqual(config.evalScriptPath, ['/path/to/GroovyKernel.groovy']);
             assert.strictEqual(config.cwd, '/workspace');
         });
 
         it('should allow optional javaHome', () => {
             const config: ProcessConfig = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/GroovyKernel.groovy',
+                evalScriptPath: ['/path/to/GroovyKernel.groovy'],
                 cwd: '/workspace',
                 javaHome: '/usr/lib/jvm/java-11'
             };
@@ -103,7 +103,7 @@ describe('types.ts interfaces', () => {
         it('should allow javaHome to be undefined', () => {
             const config: ProcessConfig = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/GroovyKernel.groovy',
+                evalScriptPath: ['/path/to/GroovyKernel.groovy'],
                 cwd: '/workspace'
             };
             assert.strictEqual(config.javaHome, undefined);
@@ -112,7 +112,7 @@ describe('types.ts interfaces', () => {
         it('should support spreading to create derived configs', () => {
             const baseConfig: Omit<ProcessConfig, 'cwd'> = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/GroovyKernel.groovy'
+                evalScriptPath: ['/path/to/GroovyKernel.groovy']
             };
             
             const fullConfig: ProcessConfig = {
@@ -121,14 +121,14 @@ describe('types.ts interfaces', () => {
             };
             
             assert.strictEqual(fullConfig.groovyPath, '/usr/bin/groovy');
-            assert.strictEqual(fullConfig.evalScriptPath, '/path/to/GroovyKernel.groovy');
+            assert.deepStrictEqual(fullConfig.evalScriptPath, ['/path/to/GroovyKernel.groovy']);
             assert.strictEqual(fullConfig.cwd, '/workspace');
         });
 
         it('should preserve javaHome when spreading', () => {
             const baseConfig: Omit<ProcessConfig, 'cwd'> = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/GroovyKernel.groovy',
+                evalScriptPath: ['/path/to/GroovyKernel.groovy'],
                 javaHome: '/usr/lib/jvm/java-11'
             };
             

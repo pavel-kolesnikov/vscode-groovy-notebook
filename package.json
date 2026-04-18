@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/pavel-kolesnikov/vscode-groovy-notebook.git"
   },
-  "version": "2.2.3",
+  "version": "2.2.4",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -97,7 +97,7 @@
     "lint": "eslint src --ext ts",
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
-    "dogfood": "npm run pack && code --install-extension groovy-notebook-*.vsix",
+    "dogfood": "npm run pack && code --install-extension $(ls -t groovy-notebook-*.vsix | head -1)",
     "test:ts": "mocha",
     "test:groovy": "node scripts/test-groovy.mjs",
     "test": "npm run test:ts && npm run test:groovy"

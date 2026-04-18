@@ -54,7 +54,12 @@ export function activate(context: vscode.ExtensionContext) {
     try {
         const logChannel = initLogger();
         
-        const evalScriptPath = context.asAbsolutePath("src/groovy/Kernel.groovy");
+        const groovySrcDir = context.asAbsolutePath("src/groovy");
+        const evalScriptPath = [
+            path.join(groovySrcDir, "MacroHelper.groovy"),
+            path.join(groovySrcDir, "PrettyPrintHelper.groovy"),
+            path.join(groovySrcDir, "Kernel.groovy"),
+        ];
         const groovyPath = getGroovyPath();
         
         const baseConfig: Omit<ProcessConfig, 'cwd'> = {
