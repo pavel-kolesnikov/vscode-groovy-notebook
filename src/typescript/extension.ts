@@ -55,16 +55,14 @@ export function activate(context: vscode.ExtensionContext) {
         const logChannel = initLogger();
         
         const groovySrcDir = context.asAbsolutePath("src/groovy");
-        const evalScriptPath = [
-            path.join(groovySrcDir, "MacroHelper.groovy"),
-            path.join(groovySrcDir, "PrettyPrintHelper.groovy"),
-            path.join(groovySrcDir, "Kernel.groovy"),
-        ];
+        const evalScriptPath = path.join(groovySrcDir, "Kernel.groovy");
+        const classpath = path.join(groovySrcDir, "kernel-helpers.jar");
         const groovyPath = getGroovyPath();
         
         const baseConfig: Omit<ProcessConfig, 'cwd'> = {
             groovyPath,
-            evalScriptPath
+            evalScriptPath,
+            classpath
         };
         
         const registry = new SessionRegistry(baseConfig);

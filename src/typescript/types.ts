@@ -2,7 +2,8 @@ export type ExecutionStatus = 'idle' | 'starting' | 'busy' | 'error' | 'terminat
 
 export interface ProcessConfig {
     groovyPath: string;
-    evalScriptPath: string[];
+    evalScriptPath: string;
+    classpath?: string;
     cwd: string;
     javaHome?: string;
 }

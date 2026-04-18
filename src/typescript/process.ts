@@ -124,11 +124,18 @@ export class GroovyProcess {
             log('Process', 'Spawning Groovy process:', {
                 groovyPath: this.config.groovyPath,
                 evalScriptPath: this.config.evalScriptPath,
+                classpath: this.config.classpath,
                 cwd: this.config.cwd,
                 javaHome: env.JAVA_HOME
             });
             
-            const proc = spawn(this.config.groovyPath, this.config.evalScriptPath, {
+            const args: string[] = [];
+            if (this.config.classpath) {
+                args.push('-cp', this.config.classpath);
+            }
+            args.push(this.config.evalScriptPath);
+            
+            const proc = spawn(this.config.groovyPath, args, {
                 cwd: this.config.cwd,
                 env
             });
