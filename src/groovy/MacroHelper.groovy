@@ -1,8 +1,18 @@
+import java.lang.annotation.*
 import java.lang.reflect.Method
 
 import groovy.grape.Grape
 import groovy.lang.GroovyShell
 import groovy.util.logging.Log
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+@interface Help {
+    String category()
+    String desc()
+    String example()
+    String output() default ""
+}
 
 @Log
 class MacroHelper {
@@ -16,6 +26,14 @@ class MacroHelper {
         b.setVariable "pp", MacroHelper.&pp
         b.setVariable "tt", MacroHelper.&tt
         b.setVariable "dir", MacroHelper.&dir
+
+        b.setVariable "help", { String cmd = null ->
+            if (cmd) {
+                printHelpDetail(cmd)
+            } else {
+                printHelpOverview()
+            }
+        }
 
         loadGroovyshRc(shell)
     }
@@ -31,10 +49,12 @@ class MacroHelper {
     }
 
 
+    @Help(category="Output", desc="Print arguments space-separated", example='p "x =", 42', output='x = 42')
     private static void p(Object... v) {
         println v.collect { String.valueOf(it) }.join(' ')
     }
 
+    @Help(category="Output", desc="Pretty-print as YAML (strips transient/static fields)", example='pp [a: 1, b: [c: 2]]', output='a: 1\nb:\n  c: 2')
     private static void pp(Object... v) {
         if (v.size() == 1) {
             println PrettyPrintHelper.toYaml(v[0])
@@ -43,11 +63,13 @@ class MacroHelper {
         }
     }
 
+    @Help(category="Dependencies", desc="Add directory to classpath (relative to .groovynb file)", example='addClasspath "lib"')
     private static void addClasspath(GroovyShell shell, String path) {
         assert new File(path).isDirectory(), "Classpath must be a directory"
         shell.classLoader.addClasspath(path)
     }
 
+    @Help(category="Dependencies", desc="Grab Maven dependencies via Grape (cached in ~/.groovy/grapes)", example='grab "org.apache.commons:commons-lang3:3.17.0"')
     private static void grab(GroovyShell shell, String... artifacts) {
         Map[] coords = artifacts.collect {
             it.tokenize(":").with {[
@@ -62,6 +84,7 @@ class MacroHelper {
         )
     }
 
+    @Help(category="Exploration", desc="Find fully-qualified class name by short name (searches classpath JARs)", example='findClass "List"', output='[java.util.List]')
     private static List<String> findClass(GroovyShell shell, String className) {
         shell.classLoader.getURLs()
             .stream()
@@ -82,6 +105,7 @@ class MacroHelper {
             .toList()
     }
     
+    @Help(category="Output", desc="Render ASCII table from list of maps", example="tt data, 'name age'")
     private static void tt(List<Object> data, String columnsToRender = null) {
         println renderTable(data, columnsToRender)
     }
@@ -127,6 +151,7 @@ class MacroHelper {
         return result.join('\n')
     }
     
+    @Help(category="Exploration", desc="Inspect object members (fields, properties, methods) sorted by inheritance depth", example='dir "hello"')
     static String dir(obj) {
         def clazz = obj.getClass()
         def rows = []
@@ -207,6 +232,56 @@ class MacroHelper {
         
         p "$clazz:"
         tt(rows, 'type name from signature')
+    }
+
+    static void printHelpOverview() {
+        def methods = MacroHelper.class.declaredMethods.findAll { it.isAnnotationPresent(Help) }.unique { it.name }
+        def grouped = methods.groupBy { it.getAnnotation(Help).category() }
+        def categoryOrder = ['Output', 'Exploration', 'Dependencies']
+        categoryOrder.each { cat ->
+            if (grouped[cat]) {
+                println "${cat}:"
+                grouped[cat].sort { it.name }.each { m ->
+                    def ann = m.getAnnotation(Help)
+                    def name = m.name
+                    println "  ${name.padRight(20)}${ann.desc()}"
+                }
+                println ""
+            }
+        }
+        println "Meta:"
+        println "  ${'help [cmd]'.padRight(20)}Show this help, or detailed help for a command"
+    }
+
+    static void printHelpDetail(String cmd) {
+        def method = MacroHelper.class.declaredMethods.find {
+            it.name == cmd && it.isAnnotationPresent(Help)
+        }
+        if (!method) {
+            println "Unknown command: ${cmd}"
+            println "Type help() to see available commands."
+            return
+        }
+        def ann = method.getAnnotation(Help)
+        def paramTypes = method.parameterTypes.collect {
+            if (it.simpleName == 'GroovyShell') return null
+            if (it.array) {
+                return it.componentType.simpleName == 'Object' ? 'args...' : it.componentType.simpleName + '...'
+            }
+            return it.simpleName
+        }.grep().join(', ')
+        println "${cmd} <${paramTypes}>"
+        println "  ${ann.desc()}"
+        println ""
+        println "  Example:"
+        println "    ${ann.example()}"
+        if (ann.output()) {
+            println ""
+            println "  Output:"
+            ann.output().split('\n').each { line ->
+                println "    ${line}"
+            }
+        }
     }
 
     private static String formatMethodSignature(Method method) {

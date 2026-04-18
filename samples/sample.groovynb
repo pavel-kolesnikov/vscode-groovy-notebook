@@ -1,114 +1,160 @@
 {
+  "schemaVersion": "1.1.0",
   "cells": [
     {
+      "id": "z9n0rrd5",
       "kind": 2,
       "language": "groovy",
       "value": "a = 1 + 1\nprint a\n\nb = [a:[b:2, c:[1,2,3]]]"
     },
     {
+      "id": "tiivw6wh",
       "kind": 2,
       "language": "groovy",
       "value": "pp b\np('*' * b.toString().size())\np b"
     },
     {
+      "id": "33cymkwg",
       "kind": 2,
       "language": "groovy",
       "value": "\"powershell pwd\".execute().text"
     },
     {
+      "id": "zx9h1nh8",
       "kind": 2,
       "language": "groovy",
       "value": "assert new SameDir().say() =~ \"relative path\""
     },
     {
+      "id": "mnjx6cty",
       "kind": 1,
       "language": "markdown",
       "value": "Add a path (relative to current file) to JVM ClassPath, making Cow.groovy available."
     },
     {
+      "id": "91s6894d",
       "kind": 2,
       "language": "groovy",
       "value": "addClasspath \"other-path\""
     },
     {
+      "id": "zt86iwfk",
       "kind": 1,
       "language": "markdown",
       "value": "2nd assertion below should fail (because MOOO != LOL) and show nice assertion debug."
     },
     {
+      "id": "2e2ijqia",
       "kind": 2,
       "language": "groovy",
       "value": "assert new Cow().say() =~ /M[Oo]{2,}!/\nassert new Cow().say() =~ /LOL/"
     },
     {
+      "id": "a9nkgql1",
       "kind": 2,
       "language": "groovy",
       "value": "dir new Cow()"
     },
     {
+      "id": "f8atpgzp",
       "kind": 2,
       "language": "groovy",
       "value": "import groovy.transform.TypeChecked\n\n@TypeChecked(extensions = 'groovy.typecheckers.RegexChecker')\ndef testRegexChecker() {\n    def date = '2022-04-03'\n\n    assert date ==~ /(\\d{4})-(\\d{1,2})-(\\d{1,2}/\n}"
     },
     {
+      "id": "y84x0l6n",
       "kind": 2,
       "language": "groovy",
       "value": "grab 'org.ccil.cowan.tagsoup:tagsoup:1.2'"
     },
     {
+      "id": "phcucxny",
       "kind": 2,
       "language": "groovy",
       "value": "System.exit(0)\n// we catch this, will not terminate the kernel, "
     },
     {
+      "id": "3k6z9bh4",
       "kind": 2,
       "language": "groovy",
       "value": "Runtime.runtime.halt(0)\n// it seems we cannot catch this, will terminate the kernel."
     },
     {
+      "id": "ypspxosh",
       "kind": 2,
       "language": "groovy",
       "value": "Thread.sleep(10000)"
     },
     {
+      "id": "f0dxei6j",
       "kind": 2,
       "language": "groovy",
       "value": "Thread.sleep(10000)"
     },
     {
+      "id": "0ksuxber",
       "kind": 2,
       "language": "groovy",
       "value": "p NV(ProcessHandle.current().pid())"
     },
     {
+      "id": "jiuz63s6",
       "kind": 2,
       "language": "groovy",
       "value": "ph = ProcessHandle.current()\n\npp ph"
     },
     {
+      "id": "0btfl0rx",
       "kind": 2,
       "language": "groovy",
       "value": "dir ProcessHandle.current()"
     },
     {
+      "id": "n58n7dxg",
       "kind": 2,
       "language": "groovy",
       "value": "url = 'https://randomuser.me/api/?results=10'\nresponse = new groovy.json.JsonSlurper().parse(url.toURL())"
     },
     {
+      "id": "z3cncmwi",
       "kind": 2,
       "language": "groovy",
       "value": "pp response"
     },
     {
+      "id": "lhui3xd6",
       "kind": 2,
       "language": "groovy",
       "value": "tt response.results"
     },
     {
+      "id": "cpok94iw",
       "kind": 2,
       "language": "groovy",
       "value": "tt response.results.location"
+    },
+    {
+      "id": "9me4rnom",
+      "kind": 2,
+      "language": "groovy",
+      "value": "help 'pp'",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "cHAgPGFyZ3MuLi4+CiAgUHJldHR5LXByaW50IGFzIFlBTUwgKHN0cmlwcyB0cmFuc2llbnQvc3RhdGljIGZpZWxkcykKCiAgRXhhbXBsZToKICAgIHBwIFthOiAxLCBiOiBbYzogMl1dCgogIE91dHB1dDoKICAgIGE6IDEKICAgIGI6CiAgICAgIGM6IDI=",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9rclwkrm",
+      "kind": 2,
+      "language": "groovy",
+      "value": ""
     }
   ]
 }

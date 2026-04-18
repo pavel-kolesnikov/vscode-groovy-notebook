@@ -159,6 +159,42 @@ class MacroHelperTest {
         assert result instanceof List
     }
 
+    @Test
+    void testHelpOverview() {
+        def output = captureOutput {
+            MacroHelper.printHelpOverview()
+        }
+        assert output.contains("Output:")
+        assert output.contains("Exploration:")
+        assert output.contains("Dependencies:")
+        assert output.contains("Meta:")
+        assert output.contains("p ")
+        assert output.contains("pp ")
+        assert output.contains("tt ")
+        assert output.contains("dir ")
+        assert output.contains("grab ")
+        assert output.contains("addClasspath ")
+        assert output.contains("findClass ")
+    }
+
+    @Test
+    void testHelpDetail() {
+        def output = captureOutput {
+            MacroHelper.printHelpDetail("pp")
+        }
+        assert output.contains("pp")
+        assert output.contains("Pretty-print")
+        assert output.contains("Example:")
+    }
+
+    @Test
+    void testHelpDetailUnknownCommand() {
+        def output = captureOutput {
+            MacroHelper.printHelpDetail("nonexistent")
+        }
+        assert output.contains("Unknown command")
+    }
+
     private String captureOutput(Closure closure) {
         def baos = new ByteArrayOutputStream()
         def oldOut = System.out

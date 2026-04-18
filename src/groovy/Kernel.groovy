@@ -178,6 +178,8 @@ class Kernel {
         assert !code.isEmpty(), "Code is empty"
         assert !code.contains("System.exit"), "Refusing to call `System.exit`"
 
+        code = preprocessCommand(code)
+
         cleanupOutput()
         
         currentFuture = executor.submit {
@@ -198,6 +200,12 @@ class Kernel {
         } finally {
             currentFuture = null
         }
+    }
+
+    String preprocessCommand(String code) {
+        if (code == '/help' || code == 'help') return 'help()'
+        if (code.startsWith('/help ')) return "help('${code.substring(6).strip()}')"
+        return code
     }
 
     void cancelCurrent() {

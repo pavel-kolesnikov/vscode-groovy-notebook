@@ -82,7 +82,7 @@ pp <args...>
 
 ## B. README Update
 
-### Requirements: Groovy 5+, Java 21+
+### Requirements: Groovy 4+, Java 21+
 
 ### Structure
 

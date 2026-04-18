@@ -94,6 +94,15 @@ class KernelTest {
     }
 
     @Test
+    void testPreprocessHelp() {
+        assert eval.preprocessCommand('help') == 'help()'
+        assert eval.preprocessCommand('/help') == 'help()'
+        assert eval.preprocessCommand('/help pp') == "help('pp')"
+        assert eval.preprocessCommand('/help  pp  ') == "help('pp')"
+        assert eval.preprocessCommand('println help') == 'println help'
+    }
+
+    @Test
     void testContextPreservedAfterCancellation() {
         eval.process("x = 42")
 
