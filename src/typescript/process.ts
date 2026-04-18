@@ -169,7 +169,7 @@ export class GroovyProcess {
             
             if (stderr) {
                 stderr.on('data', (chunk: Buffer) => {
-                    log('Process', 'stderr chunk:', formatBuffer(chunk));
+                    log('Process', 'stderr chunk:', chunk.toString());
                 });
             }
             
