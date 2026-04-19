@@ -172,35 +172,4 @@ class KernelPipeTest {
         assert result.stderr.contains("boom")
     }
 
-    static void main(String[] args) {
-        def testMethods = KernelPipeTest.class.declaredMethods
-            .findAll { it.name.startsWith('test') && it.parameterCount == 0 }
-            .sort { it.name }
-
-        int passed = 0
-        int failed = 0
-        def failures = []
-
-        testMethods.each { method ->
-            def test = new KernelPipeTest()
-            try {
-                System.err.println("SETUP ${method.name}...")
-                test.setUp()
-                System.err.println("RUN ${method.name}...")
-                method.invoke(test)
-                System.err.println("PASS ${method.name}")
-                passed++
-            } catch (Exception e) {
-                System.err.println("FAIL ${method.name}: ${e.cause?.message ?: e.message}")
-                failed++
-                failures << "${method.name}: ${e.cause?.message ?: e.message}"
-            } finally {
-                try { test.tearDown() } catch (Exception ignored) {}
-            }
-        }
-
-        System.err.println("JUnit 4 Runner, Tests: ${passed + failed}, Failures: ${failed}, Time: N/A")
-        failures.each { System.err.println("FAIL: ${it}") }
-        System.exit(failed > 0 ? 1 : 0)
-    }
 }
