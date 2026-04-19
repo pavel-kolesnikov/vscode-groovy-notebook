@@ -5,19 +5,52 @@
       "id": "z9n0rrd5",
       "kind": 2,
       "language": "groovy",
-      "value": "a = 1 + 1\nprint a\n\nb = [a:[b:2, c:[1,2,3]]]"
+      "value": "a = 1 + 1\nprint a\n\nb = [a:[b:2, c:[1,2,3]]]",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "Mg==",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "tiivw6wh",
       "kind": 2,
       "language": "groovy",
-      "value": "pp b\np('*' * b.toString().size())\np b"
+      "value": "pp b\np('*' * b.toString().size())\np b",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "LS0tCmE6CiAgYjogMgogIGM6CiAgLSAxCiAgLSAyCiAgLSAzCgoqKioqKioqKioqKioqKioqKioqKioqCnthPXtiPTIsIGM9WzEsIDIsIDNdfX0K",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "33cymkwg",
       "kind": 2,
       "language": "groovy",
-      "value": "\"powershell pwd\".execute().text"
+      "value": "\"powershell pwd\".execute().text",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "RXZhbHVhdGlvbiBmYWlsZWQ6CmphdmEuaW8uSU9FeGNlcHRpb246IENhbm5vdCBydW4gcHJvZ3JhbSAicG93ZXJzaGVsbCI6IGVycm9yPTIsINCd0LXRgiDRgtCw0LrQvtCz0L4g0YTQsNC50LvQsCDQuNC70Lgg0LrQsNGC0LDQu9C+0LPQsAogICAgYXQgamF2YS5sYW5nLlByb2Nlc3NCdWlsZGVyLnN0YXJ0KFByb2Nlc3NCdWlsZGVyLmphdmE6MTE3MCkKICAgIGF0IGphdmEubGFuZy5Qcm9jZXNzQnVpbGRlci5zdGFydChQcm9jZXNzQnVpbGRlci5qYXZhOjEwODkpCiAgICBhdCBqYXZhLmxhbmcuUnVudGltZS5leGVjKFJ1bnRpbWUuamF2YTo2ODEpCiAgICBhdCBqYXZhLmxhbmcuUnVudGltZS5leGVjKFJ1bnRpbWUuamF2YTo0OTEpCiAgICBhdCBqYXZhLmxhbmcuUnVudGltZS5leGVjKFJ1bnRpbWUuamF2YTozNjYpCiAgICBhdCBTY3JpcHQxMS5ydW4oU2NyaXB0MTEuZ3Jvb3Z5OjEpCiAgICBhdCBLZXJuZWwkX3Byb2Nlc3NfY2xvc3VyZTQuZG9DYWxsKEtlcm5lbC5ncm9vdnk6MTg0KQogICAgYXQgS2VybmVsJF9wcm9jZXNzX2Nsb3N1cmU0LmRvQ2FsbChLZXJuZWwuZ3Jvb3Z5Oi0xKQogICAgYXQgamF2YS51dGlsLmNvbmN1cnJlbnQuRnV0dXJlVGFzay5ydW4oRnV0dXJlVGFzay5qYXZhOjMxNykKICAgIGF0IGphdmEudXRpbC5jb25jdXJyZW50LlRocmVhZFBvb2xFeGVjdXRvci5ydW5Xb3JrZXIoVGhyZWFkUG9vbEV4ZWN1dG9yLmphdmE6MTE0NCkKICAgIGF0IGphdmEudXRpbC5jb25jdXJyZW50LlRocmVhZFBvb2xFeGVjdXRvciRXb3JrZXIucnVuKFRocmVhZFBvb2xFeGVjdXRvci5qYXZhOjY0MikKICAgIGF0IGphdmEubGFuZy5UaHJlYWQucnVuKFRocmVhZC5qYXZhOjE1ODMpCg==",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "zx9h1nh8",
@@ -47,19 +80,53 @@
       "id": "2e2ijqia",
       "kind": 2,
       "language": "groovy",
-      "value": "assert new Cow().say() =~ /M[Oo]{2,}!/\nassert new Cow().say() =~ /LOL/"
+      "value": "assert new Cow().say() =~ /M[Oo]{2,}!/\nassert new Cow().say() =~ /LOL/",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "QXNzZXJ0aW9uIGZhaWxlZDogCmFzc2VydCBuZXcgQ293KCkuc2F5KCkgPX4gL0xPTC8KICAgICAgIHwgICAgICAgICB8ICAgICB8CiAgICAgICB8ICAgICAgICAgfCAgICAgamF2YS51dGlsLnJlZ2V4Lk1hdGNoZXJbcGF0dGVybj1MT0wgcmVnaW9uPTAsNSBsYXN0bWF0Y2g9XQogICAgICAgfCAgICAgICAgICdNT09PIScKICAgICAgIENvd0BiYzFiNTMzCg==",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "a9nkgql1",
       "kind": 2,
       "language": "groovy",
-      "value": "dir new Cow()"
+      "value": "dir new Cow()",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "H4sIAAAAAAAAA42TTXKEIBCF13oKlk5VTpBdykqlsphKqnICRnuUhKENtBpvH//AP3SGFfCeH69tSCQ3hsVYP4fUFMDaESh+6yf94qrx5hZGZIpTqZ28P8IbUI5p+1EGdAbicXdS0J7kLIHbZnNPdDrEGd5MhAXui7RQGWsNXsQObjddhSJlczlyszU+LDQWoKkJkr6ckfBx+YaEbNSZ8nA6+C25ND7cBVECV2xwRIPmL3vRChfDl87qh/9vwuXc5DGmsMUJRcyqd5ox4RSSuDa+YvtWDPK91q5xL1Ie4Vr5wWIJx/u1wY371nDEm3A1F2R3Pek6OZKoshOjXGNt2Lsi0LosCNLXvwQKEqgWnf0c7yAL3jRi1QxQy54ZoiHnNuaEE6rCHzj3Sy9ubhh5T2x1CRePbCedfWSrbBtWh/sHlPuZFKwEAAA=",
+              "encoding": "base64",
+              "compression": "gzip"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "f8atpgzp",
       "kind": 2,
       "language": "groovy",
-      "value": "import groovy.transform.TypeChecked\n\n@TypeChecked(extensions = 'groovy.typecheckers.RegexChecker')\ndef testRegexChecker() {\n    def date = '2022-04-03'\n\n    assert date ==~ /(\\d{4})-(\\d{1,2})-(\\d{1,2}/\n}"
+      "value": "import groovy.transform.TypeChecked\n\n@TypeChecked(extensions = 'groovy.typecheckers.RegexChecker')\ndef testRegexChecker() {\n    def date = '2022-04-03'\n\n    assert date ==~ /(\\d{4})-(\\d{1,2})-(\\d{1,2}/\n}",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "RXZhbHVhdGlvbiBmYWlsZWQ6Cm9yZy5jb2RlaGF1cy5ncm9vdnkuY29udHJvbC5NdWx0aXBsZUNvbXBpbGF0aW9uRXJyb3JzRXhjZXB0aW9uOiBzdGFydHVwIGZhaWxlZDoKU2NyaXB0MTYuZ3Jvb3Z5OiA3OiBbU3RhdGljIHR5cGUgY2hlY2tpbmddIC0gQmFkIHJlZ2V4OiBVbmNsb3NlZCBncm91cCBuZWFyIGluZGV4IDI2CihcZHs0fSktKFxkezEsMn0pLShcZHsxLDJ9CiBAIGxpbmUgNywgY29sdW1uIDEyLgogICAgICAgYXNzZXJ0IGRhdGUgPT1+IC8oXGR7NH0pLShcZHsxLDJ9KS0oXGR7MSwyfS8KICAgICAgICAgICAgICBeCgoxIGVycm9yCgogICAgYXQgS2VybmVsJF9wcm9jZXNzX2Nsb3N1cmU0LmRvQ2FsbChLZXJuZWwuZ3Jvb3Z5OjE4NCkKICAgIGF0IEtlcm5lbCRfcHJvY2Vzc19jbG9zdXJlNC5kb0NhbGwoS2VybmVsLmdyb292eTotMSkKICAgIGF0IGphdmEudXRpbC5jb25jdXJyZW50LkZ1dHVyZVRhc2sucnVuKEZ1dHVyZVRhc2suamF2YTozMTcpCiAgICBhdCBqYXZhLnV0aWwuY29uY3VycmVudC5UaHJlYWRQb29sRXhlY3V0b3IucnVuV29ya2VyKFRocmVhZFBvb2xFeGVjdXRvci5qYXZhOjExNDQpCiAgICBhdCBqYXZhLnV0aWwuY29uY3VycmVudC5UaHJlYWRQb29sRXhlY3V0b3IkV29ya2VyLnJ1bihUaHJlYWRQb29sRXhlY3V0b3IuamF2YTo2NDIpCiAgICBhdCBqYXZhLmxhbmcuVGhyZWFkLnJ1bihUaHJlYWQuamF2YToxNTgzKQo=",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "y84x0l6n",
@@ -71,13 +138,35 @@
       "id": "phcucxny",
       "kind": 2,
       "language": "groovy",
-      "value": "System.exit(0)\n// we catch this, will not terminate the kernel, "
+      "value": "System.exit(0)\n// we catch this, will not terminate the kernel, ",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "QXNzZXJ0aW9uIGZhaWxlZDogClJlZnVzaW5nIHRvIGNhbGwgYFN5c3RlbS5leGl0YC4gRXhwcmVzc2lvbjogIShjb2RlLmNvbnRhaW5zKFN5c3RlbS5leGl0KSkK",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "3k6z9bh4",
       "kind": 2,
       "language": "groovy",
-      "value": "Runtime.runtime.halt(0)\n// it seems we cannot catch this, will terminate the kernel."
+      "value": "Runtime.runtime.halt(0)\n// it seems we cannot catch this, will terminate the kernel.",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stderr",
+              "value": "R3Jvb3Z5IHByb2Nlc3MgZXhpdGVkIHVuZXhwZWN0ZWRseSBiZWZvcmUgc2VuZGluZyByZXNwb25zZS4gVHJ5IHJlc3RhcnRpbmcgdGhlIGtlcm5lbC4=",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "ypspxosh",
@@ -95,19 +184,53 @@
       "id": "0ksuxber",
       "kind": 2,
       "language": "groovy",
-      "value": "p NV(ProcessHandle.current().pid())"
+      "value": "p NV(ProcessHandle.current().pid())",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "UHJvY2Vzc0hhbmRsZS5jdXJyZW50KCkucGlkKCk9MjI4MjIK",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "jiuz63s6",
       "kind": 2,
       "language": "groovy",
-      "value": "ph = ProcessHandle.current()\n\npp ph"
+      "value": "ph = ProcessHandle.current()\n\npp ph",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "LS0tCi0gYWxpdmU6IHRydWUKCg==",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "0btfl0rx",
       "kind": 2,
       "language": "groovy",
-      "value": "dir ProcessHandle.current()"
+      "value": "dir ProcessHandle.current()",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "H4sIAAAAAAAAA7WW3XKqMBDHr/UpuLQ3PsC541CcMm3RUTqdc26YCKumExKaBKtvf4KIiCwfTntyAxP2zy+7m80mYkQp64PsyZQRvp0upIhAqSfCYwZekrJfY31MwTJjxElyemmM0UaKpD6j6JYTnUlcUBvjDQUW56JIGCBoKri6ATSWNXIEjzIpgetXkg4GFArEgyagMTME4M+D0A6dJ+/lsRdAsYX0AVIa4yYIgAm+vR9Q/GYJJAXpHiDKtJAtgOvPgwFL1164y/DRndlvL0G4CmzneeX9dX/MA6WJ1AFt7tWfApglL4PAe3VD2//zfwGL5dxxV6vwzX/25+/+NwEmtyap+jgijO7RykQAv4VgQPggQAJ6J+K80HaUxabUhgCUlkCS6er0sErl5KEbYI4KIiEQAwB5oV3sJ7Xvt5ArwLeOirO66UQFiEFFwGPCdf9hVw/RlbIHoKU4DvJgfU7yWYMGvw0wEzKia3a8B1BqMFAFgM+MMNW06AIUmsl8/QGRxt2oADuido6Im6XQsotK+6741ACUbxo7tA1Qm5l6uTKXd4eIKhuv5Y4QnTXDkiy4e6BYo0IA0aUnT52ilZM1g1l2ugcUPyqhFSAvS7QTIoB5ml8OCLMK0TAP7m6ZRtCT4DpAZWkqpFa+kAlhAciEmruPWWhHDlo1FbkCaGEqnyLnPAI4W5aSzhBd+kF0ugViISrq6HrGabPtCtEWNK5rBZSKzkxUAC403SBnHQbYC7MjCkFfnm8BNmtcA7sBRjDQgy+Cllk7IBdM8g37YOmdFF/K8rgGKbNUQ+weIjgVy/gfDSZZU+ILAAA=",
+              "encoding": "base64",
+              "compression": "gzip"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "n58n7dxg",
@@ -119,31 +242,112 @@
       "id": "z3cncmwi",
       "kind": 2,
       "language": "groovy",
-      "value": "pp response"
+      "value": "pp response",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "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",
+              "encoding": "base64",
+              "compression": "gzip"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "lhui3xd6",
       "kind": 2,
       "language": "groovy",
-      "value": "tt response.results"
+      "value": "tt response.results",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "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",
+              "encoding": "base64",
+              "compression": "gzip"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "cpok94iw",
       "kind": 2,
       "language": "groovy",
-      "value": "tt response.results.location"
+      "value": "tt response.results.location",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "H4sIAAAAAAAAA62VzXLbNhSF18xTYNXYU4pDgAR/OuOFLdtpxnbjiRVnfSnCIioK8IBgVDvDB+hTZBuv+wjqg/XSpm3+dDrtTLmSIEC4H88591bWCGHJv3mcpbR3g4XKghWTXbpW1nQbnVtd2aXOBS5rk0uFB6p/vsXKjbjXavy///F581XVm0yYgyihqUsUbMTBNZRbrXNyud7eNf0r5yCN6pXl/KKNLYRRZCGMkVa3OM5hXVkDpYTHLZxR//HD1xKstHUuDmYJ94Iw4i4ptVo9rTHmhTQOm3ajvrmphD34kfo/+b5LclEtjby1UquDE6hse9/LHS55V8PGJdcl5PILvkS9boZgCYt5B3YhZCXUVqz6VI8cUqisNiuy91lUwuw7VwCmBJUPdr0TZgPqWbGUpmkyBAsTj4ac9bkiXApi2pA+WDDhOoJVkUPuko/yDvLCJRe6WuqtS66sRy4FMldtfU0fLE0Y68BOypVUuHfERRzEseQSyg05ErAsiHMB5m4C9klJK3I837rOoREP+BAs8uIwTfpcs8CLgoQ3pA82iydgF63LAYtboF3J3qcr8gOZg4Ic9sfFvoDFPHwGuxRG3uwejFxqMtdG40H9dOd894fJdQY9eWo0oTB6gHYhfmvPdt8CnyfBEC3xvTD1wz4bjSIvSqN0aMapZqauKlFWLlZ2K1QBK6FQOMiNRCEvwciqmaIFSYd2rNcYmBIMmeeDlC3EWpoc/vz2snJi7mtTb4bSLmqzFs99xomjIBq5MUm9IObRQLWIemmUDGPGJmRnmCwl1cq0jrzStS3I4Q1qAGPJemTMZ2FH9rEWiF+X6DnTt6QzLzFBWtnZKSqFJnSuMXfjDuac4k/L50WHRX46cuOMU49z5g/IYupFfoJBewULJ2CHWU2OC8gk6lRXS7AuOYJ17ZJFJktZyV6xL2CY3qAHlgty/vYwy3YPs2MxO3+7+/129yAa5zOUbUq3siR7R2K/7RZq9/3LGO5qK+296HqLw+KQkzGcF9NoyIZNhLOQD1Tj0964xvga+djIXPK+KmEDWavgGRjMPjIvoCrWQtmm1xz9tK8aHl/KWyhF0ysZO22V6bY9djJiyx/7YKRaHDNOh2Ax9yjz6QCMRrHHKQub/72HpNR/DtqZNMuiHRe7b6IZ1SywDIXjObdPqPiecELMDjHNZTftR22fhn44CtqMx17iJ8EQLWQe7kybVzI6TdqJkluBMwtF2sKv+N6lmmZs5EcW0I7sZ6xMgkLd6yHYtSxAWfm6MEfVcV6SD/gedKZtoSQ4p1K9jgInYmGUDsEC5gU0jAdcLPFinwZ9L87+xovdnJ4qhonTK21xcJ/LTdtQ3vwFz1grilsJAAA=",
+              "encoding": "base64",
+              "compression": "gzip"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "9me4rnom",
       "kind": 2,
       "language": "groovy",
-      "value": "help 'pp'"
+      "value": "help 'pp'",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "cHAgPGFyZ3MuLi4+CiAgUHJldHR5LXByaW50IGFzIFlBTUwgKHN0cmlwcyB0cmFuc2llbnQvc3RhdGljIGZpZWxkcykKCiAgRXhhbXBsZToKICAgIHBwIFthOiAxLCBiOiBbYzogMl1dCgogIE91dHB1dDoKICAgIGE6IDEKICAgIGI6CiAgICAgIGM6IDIK",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "9rclwkrm",
       "kind": 2,
       "language": "groovy",
-      "value": "/help"
+      "value": "/help",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "application/vnd.code.notebook.stdout",
+              "value": "T3V0cHV0OgogIHAgICAgICAgICAgICAgICAgICAgUHJpbnQgYXJndW1lbnRzIHNwYWNlLXNlcGFyYXRlZAogIHBwICAgICAgICAgICAgICAgICAgUHJldHR5LXByaW50IGFzIFlBTUwgKHN0cmlwcyB0cmFuc2llbnQvc3RhdGljIGZpZWxkcykKICB0dCAgICAgICAgICAgICAgICAgIFJlbmRlciBBU0NJSSB0YWJsZSBmcm9tIGxpc3Qgb2YgbWFwcwoKRXhwbG9yYXRpb246CiAgZGlyICAgICAgICAgICAgICAgICBJbnNwZWN0IG9iamVjdCBtZW1iZXJzIChmaWVsZHMsIHByb3BlcnRpZXMsIG1ldGhvZHMpIHNvcnRlZCBieSBpbmhlcml0YW5jZSBkZXB0aAogIGZpbmRDbGFzcyAgICAgICAgICAgRmluZCBmdWxseS1xdWFsaWZpZWQgY2xhc3MgbmFtZSBieSBzaG9ydCBuYW1lIChzZWFyY2hlcyBjbGFzc3BhdGggSkFScykKCkRlcGVuZGVuY2llczoKICBhZGRDbGFzc3BhdGggICAgICAgIEFkZCBkaXJlY3RvcnkgdG8gY2xhc3NwYXRoIChyZWxhdGl2ZSB0byAuZ3Jvb3Z5bmIgZmlsZSkKICBncmFiICAgICAgICAgICAgICAgIEdyYWIgTWF2ZW4gZGVwZW5kZW5jaWVzIHZpYSBHcmFwZSAoY2FjaGVkIGluIH4vLmdyb292eS9ncmFwZXMpCgpNZXRhOgogIGhlbHAgW2NtZF0gICAgICAgICAgU2hvdyB0aGlzIGhlbHAsIG9yIGRldGFpbGVkIGhlbHAgZm9yIGEgY29tbWFuZAo=",
+              "encoding": "base64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o3m3popo",
+      "kind": 2,
+      "language": "groovy",
+      "value": "p \"\"\"\n<details>\n    <summary>IN GOD WE TRUST</summary>\n    <p>THE REST WE TEST</p>\n\"\"\"",
+      "outputs": [
+        {
+          "outputs": [
+            {
+              "mime": "text/html",
+              "value": "\n<details>\n    <summary>IN GOD WE TRUST</summary>\n    <p>THE REST WE TEST</p>\n\n",
+              "encoding": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a6c8asr4",
+      "kind": 2,
+      "language": "groovy",
+      "value": ""
     }
   ]
 }

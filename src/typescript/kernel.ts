@@ -4,6 +4,25 @@ import { ProcessError } from './process.js';
 import { ExecutionResult, Executable } from './types.js';
 import { normalizePath } from './pathUtils.js';
 
+/**
+ * Detects if text looks like an HTML fragment: starts with `<tag>`, ends with `</tag>`.
+ * Matches patterns like `<div>...</div>`, `<table class="x">...</table>`, etc.
+ */
+function looksLikeHtml(text: string): boolean {
+    const trimmed = text.trim();
+    return trimmed.length > 0
+        && trimmed.startsWith('<')
+        && trimmed.endsWith('>')
+        && /^<[a-zA-Z][\w:-]*(\s[^>]*)?>[\s\S]*<\/[a-zA-Z][\w:-]*>$/.test(trimmed);
+}
+
+function createStdoutItem(text: string): vscode.NotebookCellOutputItem {
+    if (looksLikeHtml(text)) {
+        return vscode.NotebookCellOutputItem.text(text, 'text/html');
+    }
+    return vscode.NotebookCellOutputItem.stdout(text);
+}
+
 export class GroovyKernelController implements vscode.Disposable {
     /** Unique identifier for this notebook controller */
     public static readonly id = 'groovy-shell-kernel';
@@ -78,7 +97,7 @@ export class GroovyKernelController implements vscode.Disposable {
                 streamedOutput += chunk;
                 execution!.replaceOutput([
                     new vscode.NotebookCellOutput([
-                        vscode.NotebookCellOutputItem.stdout(streamedOutput)
+                        createStdoutItem(streamedOutput)
                     ])
                 ]);
             };
@@ -126,7 +145,7 @@ export class GroovyKernelController implements vscode.Disposable {
         const message = processError.message || 'Unknown error';
 
         if (!streamed && processError.stdout?.trim()) {
-            this.appendOutput(execution, vscode.NotebookCellOutputItem.stdout(processError.stdout));
+            this.appendOutput(execution, createStdoutItem(processError.stdout));
         }
 
         this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr(processError.stderr || message));
@@ -138,7 +157,7 @@ export class GroovyKernelController implements vscode.Disposable {
             this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr(result.stderr));
         }
         if (!streamed && result.stdout?.trim()) {
-            this.appendOutput(execution, vscode.NotebookCellOutputItem.stdout(result.stdout));
+            this.appendOutput(execution, createStdoutItem(result.stdout));
         }
         execution.end(true, Date.now());
     }
