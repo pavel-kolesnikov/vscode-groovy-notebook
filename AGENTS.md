@@ -28,7 +28,7 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 |   ACK (0x06) = ready signal    ETX (0x03) = message delimiter   |
 +-----------------------------------------------------------------+
 |  Groovy Backend (Kernel.groovy)                                  |
-|  Kernel(InputStream in, OutputStream out)                        |
+|  Kernel(InputStream in, OutputStream out, OutputStream err)     |
 |  +-------------+  +-------------+  +----------------+           |
 |  |   Kernel    |  | MacroHelper |  |PrettyPrintHelp|           |
 |  | (REPL loop) |  | (p/pp/tt/...)|  |(YAML serialize)|           |
@@ -48,18 +48,20 @@ Press F5 in VS Code to launch Extension Development Host, then open a `.groovynb
 | File | Purpose | Lines |
 |------|---------|-------|
 | extension.ts | Entry point, DI wiring | 95 |
-| kernel.ts | Notebook controller, cell execution | 172 |
+| kernel.ts | Notebook controller, cell execution, streaming output, HTML auto-detect | 191 |
 | session.ts | Per-notebook session management | 205 |
 | process.ts | Subprocess lifecycle, wire protocol | 351 |
 | types.ts | Shared type definitions | 26 |
 | protocol.ts | Protocol constants (ACK, ETX) | 10 |
 | config.ts | Configuration and timeouts | 53 |
+| configValidation.ts | Input validation for settings | 44 |
 | logger.ts | Output channel logging | 22 |
 | commands.ts | VS Code command handlers | 52 |
 | statusBar.ts | Kernel status display | 70 |
 | serializer.ts | Notebook file serialization | 173 |
-| Kernel.groovy | Groovy REPL loop | 212 |
-| MacroHelper.groovy | p/pp/tt/dir macros | 339 |
+| pathUtils.ts | Cross-platform path normalization | 10 |
+| Kernel.groovy | Groovy REPL loop | 222 |
+| MacroHelper.groovy | p/pp/tt/dir macros (instance class) | 345 |
 | PrettyPrintHelper.groovy | YAML serialization | 35 |
 
 ## Classpath Resolution
@@ -87,11 +89,12 @@ Groovy tests use JUnit 4 (`@Test`), one class per file in `src/groovy/*Test.groo
 ### Groovy Test Details
 
 Individual test files (JUnit 4 style, auto-compiled by Groovy):
-- `KernelTest.groovy` - Kernel.process() and cancellation (11 tests)
-- `MacroHelperTest.groovy` - p/pp/tt/dir/renderTable helpers (20 tests)
+- `KernelPipeTest.groovy` - Black-box pipe tests: REPL loop, streaming, cancellation, stderr (13 tests)
+- `KernelTest.groovy` - Kernel.preprocessCommand() for help/help aliases (1 test)
+- `MacroHelperTest.groovy` - p/pp/tt/dir/renderTable helpers (23 tests)
 - `PrettyPrintHelperTest.groovy` - YAML serialization (8 tests)
 - `CompactStackTraceTest.groovy` - Stack trace filtering (1 test)
-- `WireProtocolTest.groovy` - ACK/ETX protocol constants and behavior (16 tests)
+- `WireProtocolTest.groovy` - ACK/ETX protocol constants and behavior (2 tests)
 
 Run a single suite: `cd src/groovy && groovy KernelTest.groovy`
 Run all via npm: `npm run test:groovy`
@@ -117,7 +120,6 @@ Logs are written to VS Code's Output panel under "Groovy Notebook" channel.
 
 1. **Process exit detection**: Groovy process abnormal exit not always detected
 2. **Error propagation**: Some errors may not reach UI, kernel appears hung
-3. **Partial-line buffering**: `print()` without newline may not flush immediately (line-buffered via PrintStream autoFlush)
 
 ## Release Process
 

@@ -138,9 +138,10 @@ Understanding these invariants will save you hours of debugging:
    the `.groovynb` file lives, not from the workspace root.
 
 4. **Streams are injected.** The `Kernel` constructor takes `(InputStream,
-   OutputStream)` parameters — a pure black-box design.  Output streams
-   directly to the pipe as it is produced, enabling real-time streaming to
-   the cell output in VS Code.
+   OutputStream, OutputStream)` parameters — `in`, `out`, and `err`.  A pure
+   black-box design.  Output streams directly to the pipe via `FlushingWriter`
+   (which flushes on every write), enabling real-time streaming to the cell
+   output in VS Code.
 
 ---
 
@@ -164,11 +165,10 @@ vscode-groovy-notebook/
 │   │   ├── types.ts          #   Shared interfaces
 │   │   └── pathUtils.ts      #   Cross-platform path normalization
 │   ├── groovy/               # REPL backend (3 main + tests)
-│   │   ├── Kernel.groovy     #   Main REPL loop
-│   │   ├── MacroHelper.groovy#   Built-in commands
+│   │   ├── Kernel.groovy     #   Main REPL loop (3-arg constructor: in, out, err)
+│   │   ├── MacroHelper.groovy#   Built-in commands (instance class)
 │   │   ├── PrettyPrintHelper.groovy  # YAML output
-│   │   ├── kernel-helpers.jar#   Pre-compiled helpers (built by npm)
-│   │   ├── *Test.groovy      #   JUnit 4 test files
+│   │   ├── *Test.groovy      #   JUnit 4 test files (includes KernelPipeTest)
 │   │   └── TestPerson.groovy #   Test fixture
 │   └── test/                 # TypeScript tests (Mocha)
 │       ├── process.test.ts   #   Subprocess protocol tests
@@ -419,19 +419,20 @@ This is the heart of the backend.  Let's walk through it step by step.
 #### Initialization (constructor)
 
 ```groovy
-Kernel(InputStream in, OutputStream out) {
+Kernel(InputStream in, OutputStream out, OutputStream err) {
     this.stdin = in
-    this.out = new PrintStream(out, true)
+    this.out = new FlushingWriter(new PrintStream(out, true))
+    this.errPrint = new PrintStream(err, true)
     this.shell = createShell()
-    warmUpJsonService()
 }
 ```
 
 **Why inject streams?** The Kernel is a pure black box: it reads code from
 `stdin` and writes output to `out`.  By taking streams as constructor
 parameters, the Kernel is testable without touching `System.out`.
-`static main` handles OS integration — it passes `System.in` and
-`System.out` and installs the SIGINT handler.
+Errors go to the separate `errPrint` stream (mapped to `System.err` in
+production).  `static main` handles OS integration — it passes `System.in`,
+`System.out`, and `System.err`, and installs the SIGINT handler.
 
 **Why `warmUpJsonService()`?** Groovy's `FastStringService` (the JSON
 backend) is loaded via `java.util.ServiceLoader`, which uses the current
@@ -467,9 +468,9 @@ void run() {
                 try {
                     process(code)
                 } catch (Exception e) {
-                    out.println "Evaluation failed:\n${e.getClass().name}: ..."
+                    errPrint.println "Evaluation failed:\n${e.getClass().name}: ..."
                 } catch (java.lang.AssertionError e) {
-                    out.println "Assertion failed: \n${e.message}"
+                    errPrint.println "Assertion failed: \n${e.message}"
                 } finally {
                     out.print(SIGNAL_END_OF_MESSAGE)
                     out.flush()
@@ -485,7 +486,8 @@ void run() {
 
 The `finally` block guarantees that ETX is always sent, even on errors --
 without it, the TypeScript side would hang forever waiting for the end-of-message
-marker.  Output streams directly to `out` during execution (no buffering).
+marker.  Output streams directly to `out` during execution via `FlushingWriter`
+(every write flushes immediately).  Errors go to `errPrint` (stderr).
 
 #### Code Execution (`process()`, line 171)
 
@@ -537,23 +539,34 @@ messages readable.
 #### How Injection Works
 
 ```groovy
-static void injectMacroses(GroovyShell shell) {
-    final Binding b = shell.context
-    b.setVariable "p", MacroHelper.&p          // Method reference
-    b.setVariable "pp", MacroHelper.&pp
+MacroHelper(GroovyShell shell) {
+    this.shell = shell
+    this.out = shell.context.out as PrintWriter
+}
+
+void inject() {
+    def b = shell.context
+    b.setVariable "p", this.&p              // Instance method reference
+    b.setVariable "pp", this.&pp
+    b.setVariable "tt", this.&tt
+    b.setVariable "dir", this.&dir
+    b.setVariable "addClasspath", this.&addClasspath
+    b.setVariable "grab", this.&grab
+    b.setVariable "findClass", this.&findClass
     // ...
 }
 ```
 
-Each command is a static method on `MacroHelper`, bound as a variable in
-the shell's `Binding`.  This means `p "hello"` in a cell calls
-`MacroHelper.p("hello")`.
+`MacroHelper` is instantiated with a `GroovyShell` reference and wraps its
+output writer.  Each command is an instance method, bound as a variable in
+the shell's `Binding` via `this.&methodName`.  This means `p "hello"` in a
+cell calls `macroHelper.p("hello")`, which writes to the shell's `out`.
 
 #### The `@Help` Annotation System
 
 ```groovy
 @Help(category="Output", desc="Pretty-print as YAML", example='pp [a: 1]')
-private static void pp(Object... v) { ... }
+void pp(Object... v) { ... }
 ```
 
 The `@Help` annotation provides metadata for the `help` command.  The
@@ -670,25 +683,25 @@ TypeScript execution without a pre-compile step.
 
 ```
 src/groovy/
-├── KernelTest.groovy              # Kernel.process() and cancellation (11 tests)
-├── MacroHelperTest.groovy         # p/pp/tt/dir/grab helpers (20 tests)
+├── KernelPipeTest.groovy          # Black-box pipe tests: REPL loop, streaming, cancellation, stderr (13 tests)
+├── KernelTest.groovy              # Kernel.preprocessCommand() for help/help aliases (1 test)
+├── MacroHelperTest.groovy         # p/pp/tt/dir/renderTable helpers (23 tests)
 ├── PrettyPrintHelperTest.groovy   # YAML serialization (8 tests)
 ├── CompactStackTraceTest.groovy   # Stack trace filtering (1 test)
-├── WireProtocolTest.groovy        # Protocol constants and behavior (16 tests)
+├── WireProtocolTest.groovy        # Protocol constants and behavior (2 tests)
 └── TestPerson.groovy              # Test fixture class
 ```
 
-Run with: `npm run test:groovy` (or `cd src/groovy && groovy KernelTest.groovy`)
+Run with: `npm run test:groovy` (or `cd src/groovy && groovy KernelPipeTest.groovy`)
 
 The test runner (`scripts/test-groovy.mjs`) discovers `*Test.groovy` files
 and runs each one via `execFileSync("groovy", [file])`.  It skips gracefully
 if `groovy` is not found on PATH.
 
-**Note on Kernel instantiation**: Because `Kernel` takes `InputStream` and
-`OutputStream` as constructor parameters, tests provide in-memory streams
-(e.g., `ByteArrayInputStream` / `ByteArrayOutputStream`).  Tests that
-create a `Kernel` instance directly access private fields
-(`kernel.@executor`) to clean up the executor service.
+**Note on Kernel instantiation**: Because `Kernel` takes three streams
+(`InputStream`, `OutputStream`, `OutputStream`) as constructor parameters,
+pipe tests provide `PipedInputStream`/`PipedOutputStream` pairs for full
+duplex communication with the Kernel under test.
 
 ### Running Everything
 
@@ -806,19 +819,19 @@ npm run dogfood    # Pack + install into your VS Code
 
 ### Adding a New Built-in Command
 
-1. Add a static method to `MacroHelper.groovy` with the `@Help` annotation:
+1. Add an instance method to `MacroHelper.groovy` with the `@Help` annotation:
 
 ```groovy
 @Help(category="Output", desc="My new command", example='myCmd "hello"')
-private static void myCmd(String arg) {
-    println "You said: $arg"
+void myCmd(String arg) {
+    out.println "You said: $arg"
 }
 ```
 
-2. Bind it in `injectMacroses()`:
+2. Bind it in `inject()`:
 
 ```groovy
-b.setVariable "myCmd", MacroHelper.&myCmd
+b.setVariable "myCmd", this.&myCmd
 ```
 
 3. Rebuild the helpers jar: `npm run build:groovy`
@@ -879,12 +892,12 @@ the process.
 Tests that instantiate `Kernel` directly pass in-memory streams and must
 shut down the executor service to avoid thread leaks.
 
-### Partial-Line Buffering
+### Partial-Line Buffering (Resolved)
 
-Output streams to VS Code in real time, but `print()` calls without a
-trailing newline may not flush immediately.  The `PrintStream` is
-constructed with `autoFlush`, which flushes on `println()` but not on
-bare `print()`.
+Output now streams to VS Code in real time via `FlushingWriter`, which
+flushes on every `write()` call (not just on `println()`).  This was
+previously a known issue where bare `print()` without a trailing newline
+would not flush immediately.
 
 ### Classpath Is Relative to the Notebook
 
