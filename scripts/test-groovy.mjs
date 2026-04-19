@@ -46,7 +46,8 @@ function runGroovyTests() {
     } catch (error) {
       failed++;
       console.log("FAILED");
-      const output = error.stdout || error.stderr || error.message;
+      const parts = [error.stdout, error.stderr, error.message].filter(Boolean);
+      const output = parts.join("\n");
       if (output) {
         for (const line of output.split("\n")) {
           console.log(`  ${line}`);
