@@ -153,7 +153,7 @@ class Kernel {
         }
     }
 
-    private String compactStackTrace(Throwable e) {
+    static String compactStackTrace(Throwable e) {
         def result = []
         def inInternalStack = false
         
