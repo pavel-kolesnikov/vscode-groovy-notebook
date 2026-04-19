@@ -39,26 +39,30 @@ class Kernel {
     private static final String SIGNAL_END_OF_MESSAGE = '\3'
 
     static void main(args) {
-        System.setErr(System.out)
-        def kernel = new Kernel(System.in, System.out)
+        warmUpJsonService()
+
+        def kernel = new Kernel(System.in, System.out, System.err)
         installSignalHandler(kernel)
         kernel.run()
     }
+
     private final InputStream stdin
-    private final PrintStream out
+    private final FlushingWriter out
+    private final PrintStream errPrint
     private GroovyShell shell
+    private MacroHelper macroHelper
     private ExecutorService executor = Executors.newSingleThreadExecutor()
     private Future currentFuture = null
     private volatile boolean shutdownRequested = false
 
-    Kernel(InputStream in, OutputStream out) {
+    Kernel(InputStream in, OutputStream out, OutputStream err) {
         this.stdin = in
-        this.out = new PrintStream(out, true)
+        this.out = new FlushingWriter(new PrintStream(out, true))
+        this.errPrint = new PrintStream(err, true)
         this.shell = createShell()
-        warmUpJsonService()
     }
-
-    private void warmUpJsonService() {
+    
+    private static void warmUpJsonService() {
         try {
             new groovy.json.JsonSlurper().parseText('[]')
         } catch (Exception e) {
@@ -102,7 +106,7 @@ class Kernel {
     }
 
     private GroovyShell createShell() {
-        Binding shellBinding = new Binding(out: new FlushingWriter(out))
+        Binding shellBinding = new Binding(out: out)
 
         def config = new CompilerConfiguration()
         config.addCompilationCustomizers(
@@ -114,7 +118,8 @@ class Kernel {
             shellBinding,
             config
         )
-        MacroHelper.injectMacroses(shell)
+        this.macroHelper = new MacroHelper(shell)
+        this.macroHelper.inject()
 
         return shell
     }
@@ -133,9 +138,9 @@ class Kernel {
                     try {
                         process(code)
                     } catch (Exception e) {
-                        out.println "Evaluation failed:\n${e.getClass().name}: ${e.message}\n${compactStackTrace(e)}"
+                        errPrint.println "Evaluation failed:\n${e.getClass().name}: ${e.message}\n${compactStackTrace(e)}"
                     } catch (java.lang.AssertionError e) {
-                        out.println "Assertion failed: \n${e.message}"
+                        errPrint.println "Assertion failed: \n${e.message}"
                     } finally {
                         out.print(SIGNAL_END_OF_MESSAGE)
                         out.flush()
@@ -187,9 +192,9 @@ class Kernel {
         try {
             currentFuture.get()
         } catch (InterruptedException e) {
-            out.println "Execution interrupted"
+            errPrint.println "Execution interrupted"
         } catch (CancellationException e) {
-            out.println "Execution cancelled"
+            errPrint.println "Execution cancelled"
         } catch (ExecutionException e) {
             throw e.cause ?: e
         } finally {

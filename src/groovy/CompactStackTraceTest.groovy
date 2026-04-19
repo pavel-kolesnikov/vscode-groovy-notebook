@@ -8,14 +8,13 @@ class CompactStackTraceTest {
     @After
     void tearDown() {
         if (kernel != null) {
-            System.setOut(kernel.originalStdout)
             kernel.@executor.shutdown()
         }
     }
 
     @Test
     void testCompactStackTraceFiltersInternal() {
-        kernel = new Kernel()
+        kernel = new Kernel(new ByteArrayInputStream([]), new ByteArrayOutputStream(), new ByteArrayOutputStream())
         def method = Kernel.class.getDeclaredMethod("compactStackTrace", Throwable)
         method.accessible = true
 

@@ -1,53 +1,58 @@
 import org.junit.Test
+import org.junit.Before
 import static groovy.test.GroovyAssert.shouldFail
 
 class MacroHelperTest {
+    private MacroHelper helper
+    private ByteArrayOutputStream captured
+
+    @Before
+    void setUp() {
+        captured = new ByteArrayOutputStream()
+        def out = new PrintWriter(captured, true)
+        def binding = new Binding(out: out)
+        def shell = new GroovyShell(binding)
+        helper = new MacroHelper(shell)
+    }
+
+    private String getOutput() {
+        helper.out.flush()
+        return captured.toString()
+    }
 
     @Test
     void testPSingleArg() {
-        def output = captureOutput {
-            MacroHelper.p("test")
-        }
+        helper.p("test")
         assert output.contains("test")
     }
 
     @Test
     void testPMultipleArgs() {
-        def output = captureOutput {
-            MacroHelper.p("hello", "world", 123)
-        }
+        helper.p("hello", "world", 123)
         assert output.contains("hello world 123")
     }
 
     @Test
     void testPWithNull() {
-        def output = captureOutput {
-            MacroHelper.p(null)
-        }
+        helper.p(null)
         assert output.contains("null") || output.trim().isEmpty()
     }
 
     @Test
     void testPPSingleObject() {
-        def output = captureOutput {
-            MacroHelper.pp([a: 1, b: 2])
-        }
+        helper.pp([a: 1, b: 2])
         assert output.contains("a:") && output.contains("b:")
     }
 
     @Test
     void testPPMultipleObjects() {
-        def output = captureOutput {
-            MacroHelper.pp([1, 2])
-        }
+        helper.pp([1, 2])
         assert output.contains("1") && output.contains("2")
     }
 
     @Test
     void testPPWithList() {
-        def output = captureOutput {
-            MacroHelper.pp([1, 2, 3])
-        }
+        helper.pp([1, 2, 3])
         assert output.contains("1") && output.contains("2") && output.contains("3")
     }
 
@@ -130,80 +135,59 @@ class MacroHelperTest {
 
     @Test
     void testDirForObject() {
-        def output = captureOutput {
-            MacroHelper.dir(new TestPerson(name: "Test", age: 25))
-        }
+        helper.dir(new TestPerson(name: "Test", age: 25))
         assert output.contains("TestPerson")
         assert output.contains("name") || output.contains("age")
     }
 
     @Test
     void testDirForString() {
-        def output = captureOutput {
-            MacroHelper.dir("test string")
-        }
+        helper.dir("test string")
         assert output.contains("String")
     }
 
     @Test
     void testAddClasspathInvalid() {
         shouldFail(AssertionError) {
-            MacroHelper.addClasspath(new GroovyShell(), "/nonexistent/path")
+            helper.addClasspath("/nonexistent/path")
         }
     }
 
     @Test
     void testFindClassReturnsList() {
-        def shell = new GroovyShell()
-        def result = MacroHelper.findClass(shell, "String")
+        def result = helper.findClass("String")
         assert result instanceof List
     }
 
     @Test
     void testHelpOverview() {
-        def output = captureOutput {
-            MacroHelper.printHelpOverview()
-        }
-        assert output.contains("Output:")
-        assert output.contains("Exploration:")
-        assert output.contains("Dependencies:")
-        assert output.contains("Meta:")
-        assert output.contains("p ")
-        assert output.contains("pp ")
-        assert output.contains("tt ")
-        assert output.contains("dir ")
-        assert output.contains("grab ")
-        assert output.contains("addClasspath ")
-        assert output.contains("findClass ")
+        helper.printHelpOverview()
+        def text = output
+        assert text.contains("Output:")
+        assert text.contains("Exploration:")
+        assert text.contains("Dependencies:")
+        assert text.contains("Meta:")
+        assert text.contains("p ")
+        assert text.contains("pp ")
+        assert text.contains("tt ")
+        assert text.contains("dir ")
+        assert text.contains("grab ")
+        assert text.contains("addClasspath ")
+        assert text.contains("findClass ")
     }
 
     @Test
     void testHelpDetail() {
-        def output = captureOutput {
-            MacroHelper.printHelpDetail("pp")
-        }
-        assert output.contains("pp")
-        assert output.contains("Pretty-print")
-        assert output.contains("Example:")
+        helper.printHelpDetail("pp")
+        def text = output
+        assert text.contains("pp")
+        assert text.contains("Pretty-print")
+        assert text.contains("Example:")
     }
 
     @Test
     void testHelpDetailUnknownCommand() {
-        def output = captureOutput {
-            MacroHelper.printHelpDetail("nonexistent")
-        }
+        helper.printHelpDetail("nonexistent")
         assert output.contains("Unknown command")
-    }
-
-    private String captureOutput(Closure closure) {
-        def baos = new ByteArrayOutputStream()
-        def oldOut = System.out
-        System.setOut(new PrintStream(baos))
-        try {
-            closure()
-        } finally {
-            System.setOut(oldOut)
-        }
-        return baos.toString()
     }
 }
