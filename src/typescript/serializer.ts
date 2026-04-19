@@ -44,7 +44,8 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 	return outputs.map(output => {
 		const outputItems = output.outputs?.map(item => {
 			if (item.compression === 'gzip') {
-				const decompressed = zlib.gunzipSync(Buffer.from(String(item.value), 'base64'));
+				const compressed = new Uint8Array(Buffer.from(String(item.value), 'base64'));
+				const decompressed = new Uint8Array(zlib.gunzipSync(compressed));
 				const mime = item.mime;
 				return new vscode.NotebookCellOutputItem(decompressed, mime);
 			}
@@ -52,7 +53,7 @@ function deserializeCellOutputs(outputs: SerializedCellOutput[]): vscode.Noteboo
 				return vscode.NotebookCellOutputItem.text(item.value);
 			}
 			if (item.encoding === 'base64') {
-				const decoded = Buffer.from(String(item.value), 'base64');
+				const decoded = new Uint8Array(Buffer.from(String(item.value), 'base64'));
 				return new vscode.NotebookCellOutputItem(new Uint8Array(decoded), item.mime);
 			}
 			const encodedValue: Uint8Array = new TextEncoder().encode(String(item.value));
@@ -68,7 +69,7 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[], compress: bo
 			if (TEXT_MIME_TYPES.includes(item.mime)) {
 				const text = new TextDecoder().decode(item.data);
 				if (compress && text.length > COMPRESSION_THRESHOLD) {
-					const compressed = zlib.gzipSync(Buffer.from(text));
+					const compressed = zlib.gzipSync(new TextEncoder().encode(text));
 					return {
 						mime: item.mime,
 						value: compressed.toString('base64'),
@@ -83,7 +84,7 @@ function serializeCellOutputs(outputs: vscode.NotebookCellOutput[], compress: bo
 				};
 			}
 			if (compress && item.data.length > COMPRESSION_THRESHOLD) {
-				const compressed = zlib.gzipSync(item.data);
+				const compressed = zlib.gzipSync(new Uint8Array(item.data));
 				return {
 					mime: item.mime,
 					value: compressed.toString('base64'),
