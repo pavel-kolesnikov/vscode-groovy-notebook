@@ -1,6 +1,7 @@
 import org.junit.Test
 
-class WireProtocolTest {
+class WireProtocolTest extends GroovyTestBase {
+
     private static final String SIGNAL_READY = '\6'
     private static final String SIGNAL_END_OF_MESSAGE = '\3'
 

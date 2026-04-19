@@ -2,7 +2,8 @@ import org.junit.Test
 import org.junit.Before
 import org.junit.After
 
-class KernelPipeTest {
+class KernelPipeTest extends GroovyTestBase {
+
     private static final String SIGNAL_END_OF_MESSAGE = '\3'
 
     private PipedOutputStream testWrite

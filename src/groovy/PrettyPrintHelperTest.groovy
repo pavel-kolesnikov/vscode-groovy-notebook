@@ -1,6 +1,6 @@
 import org.junit.Test
 
-class PrettyPrintHelperTest {
+class PrettyPrintHelperTest extends GroovyTestBase {
 
     @Test
     void testToYamlWithMap() {

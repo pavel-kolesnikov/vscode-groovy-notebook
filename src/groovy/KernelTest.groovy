@@ -1,6 +1,7 @@
 import org.junit.Test
 
-class KernelTest {
+class KernelTest extends GroovyTestBase {
+
     @Test
     void testPreprocessHelp() {
         assert Kernel.preprocessCommand('help') == 'help()'

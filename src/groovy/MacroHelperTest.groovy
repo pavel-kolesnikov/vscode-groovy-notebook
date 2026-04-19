@@ -2,7 +2,8 @@ import org.junit.Test
 import org.junit.Before
 import static groovy.test.GroovyAssert.shouldFail
 
-class MacroHelperTest {
+class MacroHelperTest extends GroovyTestBase {
+
     private MacroHelper helper
     private ByteArrayOutputStream captured
 
