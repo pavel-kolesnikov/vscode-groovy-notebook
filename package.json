@@ -103,6 +103,10 @@
     "test:groovy": "node scripts/test-groovy.mjs",
     "test": "npm run test:ts && npm run test:groovy"
   },
+  "overrides": {
+    "diff": "^8",
+    "serialize-javascript": "^7"
+  },
   "devDependencies": {
     "@types/mocha": "^10",
     "@types/node": "^25",
