@@ -104,15 +104,15 @@
     "test": "npm run test:ts && npm run test:groovy"
   },
   "devDependencies": {
-    "@types/mocha": "^8",
+    "@types/mocha": "^10",
     "@types/node": "^25",
     "@types/vscode": "^1",
     "@typescript-eslint/eslint-plugin": "~8.58.2",
     "@typescript-eslint/parser": "~8.58.2",
     "@vscode/vsce": "~3.9.1",
     "eslint": "~9.39.4",
-    "mocha": "^10",
-    "ts-node": "^10.9.2",
+    "mocha": "^11",
+    "tsx": "^4",
     "typescript": "~5.9.3"
   }
 }

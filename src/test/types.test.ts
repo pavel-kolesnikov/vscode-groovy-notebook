@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { ExecutionStatus, ExecutionResult, ExecutionError, Executable, ProcessConfig } from '../typescript/types.js';
+import type { ExecutionStatus, ExecutionResult, ExecutionError, Executable, ProcessConfig } from '../typescript/types.js';
 
 describe('types.ts interfaces', () => {
     describe('ExecutionStatus', () => {
