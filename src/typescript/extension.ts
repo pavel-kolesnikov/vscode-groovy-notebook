@@ -1,93 +1,117 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { GroovyKernelController } from './kernel.js';
-import { SessionRegistry } from './session.js';
-import { GroovyContentSerializer } from './serializer.js';
-import { KernelStatusBar } from './statusBar.js';
 import { registerKernelCommands } from './commands.js';
 import { getGroovyPath } from './config.js';
-import { ProcessConfig } from './types.js';
+import { GroovyKernelController } from './kernel.js';
 import { initLogger } from './logger.js';
+import { GroovyContentSerializer } from './serializer.js';
+import { SessionRegistry } from './session.js';
+import { KernelStatusBar } from './statusBar.js';
+import type { ProcessConfig } from './types.js';
 
 async function makeSampleNotebook() {
     const type = GroovyKernelController.type;
     const language = GroovyKernelController.supportedLanguages[0];
-    const cell = (code: string) => new vscode.NotebookCellData(vscode.NotebookCellKind.Code, code, language);
+    const cell = (code: string) =>
+        new vscode.NotebookCellData(
+            vscode.NotebookCellKind.Code,
+            code,
+            language,
+        );
     const data = new vscode.NotebookData([
-        cell("a = 1"),
-        cell("b = 2"),
-        cell("println a+b"),
+        cell('a = 1'),
+        cell('b = 2'),
+        cell('println a+b'),
     ]);
     data.metadata = {
         custom: {
             cells: [],
             metadata: { orig_nbformat: 4 },
             nbformat: 4,
-            nbformat_minor: 2
-        }
+            nbformat_minor: 2,
+        },
     };
     const doc = await vscode.workspace.openNotebookDocument(type, data);
     await vscode.window.showNotebookDocument(doc);
 }
 
 async function exportAsGroovy(notebook: vscode.NotebookDocument) {
-    const codeCells = notebook.getCells().filter(cell => cell.kind === vscode.NotebookCellKind.Code);
-    const code = codeCells.map(cell => cell.document.getText()).join('\n\n');
-    
-    const defaultUri = vscode.Uri.file(path.join(
-        path.dirname(notebook.uri.fsPath),
-        path.basename(notebook.uri.fsPath, '.groovynb') + '.groovy'
-    ));
-    
+    const codeCells = notebook
+        .getCells()
+        .filter((cell) => cell.kind === vscode.NotebookCellKind.Code);
+    const code = codeCells.map((cell) => cell.document.getText()).join('\n\n');
+
+    const defaultUri = vscode.Uri.file(
+        path.join(
+            path.dirname(notebook.uri.fsPath),
+            `${path.basename(notebook.uri.fsPath, '.groovynb')}.groovy`,
+        ),
+    );
+
     const uri = await vscode.window.showSaveDialog({
         defaultUri,
-        filters: { 'Groovy Files': ['groovy'] }
+        filters: { 'Groovy Files': ['groovy'] },
     });
-    
+
     if (uri) {
         await vscode.workspace.fs.writeFile(uri, Buffer.from(code));
-        vscode.window.showInformationMessage(`Exported notebook to ${uri.fsPath}`);
+        vscode.window.showInformationMessage(
+            `Exported notebook to ${uri.fsPath}`,
+        );
     }
 }
 
 export function activate(context: vscode.ExtensionContext) {
     try {
         const logChannel = initLogger();
-        
-        const groovySrcDir = context.asAbsolutePath("src/groovy");
-        const evalScriptPath = path.join(groovySrcDir, "Kernel.groovy");
-        const classpath = path.join(groovySrcDir, "kernel-helpers.jar");
+
+        const groovySrcDir = context.asAbsolutePath('src/groovy');
+        const evalScriptPath = path.join(groovySrcDir, 'Kernel.groovy');
+        const classpath = path.join(groovySrcDir, 'kernel-helpers.jar');
         const groovyPath = getGroovyPath();
-        
+
         const baseConfig: Omit<ProcessConfig, 'cwd'> = {
             groovyPath,
             evalScriptPath,
-            classpath
+            classpath,
         };
-        
+
         const registry = new SessionRegistry(baseConfig);
         const kernel = new GroovyKernelController(registry);
         const statusBar = new KernelStatusBar(registry);
-        
-        registerKernelCommands(context, registry);
-        
+
+        registerKernelCommands(context, registry, kernel);
+        context.subscriptions.push(
+            vscode.workspace.onDidCloseNotebookDocument((notebook) => {
+                kernel.disposeQueue(notebook.uri);
+                void registry.disposeSession(notebook.uri);
+            }),
+        );
+
         context.subscriptions.push(
             logChannel,
-            vscode.commands.registerCommand('groovy-notebook.createSampleNotebook', makeSampleNotebook),
-            vscode.commands.registerCommand('groovy-notebook.exportAsGroovy', () => {
-                const notebook = vscode.window.activeNotebookEditor?.notebook;
-                if (notebook) {
-                    exportAsGroovy(notebook);
-                }
-            }),
+            vscode.commands.registerCommand(
+                'groovy-notebook.createSampleNotebook',
+                makeSampleNotebook,
+            ),
+            vscode.commands.registerCommand(
+                'groovy-notebook.exportAsGroovy',
+                () => {
+                    const notebook =
+                        vscode.window.activeNotebookEditor?.notebook;
+                    if (notebook) {
+                        exportAsGroovy(notebook);
+                    }
+                },
+            ),
             vscode.workspace.registerNotebookSerializer(
                 GroovyKernelController.type,
                 new GroovyContentSerializer(),
-                { transientOutputs: false }
+                { transientOutputs: false },
             ),
             kernel,
             registry,
-            statusBar
+            statusBar,
         );
     } catch (e) {
         vscode.window.showErrorMessage(String(e));

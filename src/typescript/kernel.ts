@@ -1,191 +1,201 @@
 import * as vscode from 'vscode';
-import { SessionRegistry, GroovySession } from './session.js';
-import { ProcessError } from './process.js';
-import { ExecutionResult, Executable } from './types.js';
+import { ExecutionQueue } from './executionQueue.js';
 import { normalizePath } from './pathUtils.js';
+import type { ProcessError } from './process.js';
+import type { GroovySession, SessionRegistry } from './session.js';
+import type { ExecutionResult } from './types.js';
 
-/**
- * Detects if text looks like an HTML fragment: starts with `<tag>`, ends with `</tag>`.
- * Matches patterns like `<div>...</div>`, `<table class="x">...</table>`, etc.
- */
 function looksLikeHtml(text: string): boolean {
-    const trimmed = text.trim();
-    return trimmed.length > 0
-        && trimmed.startsWith('<')
-        && trimmed.endsWith('>')
-        && /^<[a-zA-Z][\w:-]*(\s[^>]*)?>[\s\S]*<\/[a-zA-Z][\w:-]*>$/.test(trimmed);
+    const t = text.trim();
+    return (
+        t.length > 0 &&
+        t.startsWith('<') &&
+        t.endsWith('>') &&
+        /^<[a-zA-Z][\w:-]*(\s[^>]*)?>[\s\S]*<\/[a-zA-Z][\w:-]*>$/.test(t)
+    );
 }
-
 function createStdoutItem(text: string): vscode.NotebookCellOutputItem {
-    if (looksLikeHtml(text)) {
-        return vscode.NotebookCellOutputItem.text(text, 'text/html');
-    }
-    return vscode.NotebookCellOutputItem.stdout(text);
+    return looksLikeHtml(text)
+        ? vscode.NotebookCellOutputItem.text(text, 'text/html')
+        : vscode.NotebookCellOutputItem.stdout(text);
 }
 
 export class GroovyKernelController implements vscode.Disposable {
-    /** Unique identifier for this notebook controller */
     public static readonly id = 'groovy-shell-kernel';
-    /** Notebook type this controller handles */
     public static readonly type = 'groovy-notebook';
-    /** Display label shown in VS Code UI */
     public static readonly label = 'Groovy Shell';
-    /** Languages supported by this kernel */
     public static readonly supportedLanguages = ['groovy'];
-    
     private readonly executionOrders = new Map<string, number>();
-    private queue: Promise<void> = Promise.resolve();
-    private currentExecution: vscode.NotebookCellExecution | null = null;
-    private currentSession: Executable | undefined = undefined;
+    private readonly queues = new Map<
+        string,
+        ExecutionQueue<vscode.NotebookCell>
+    >();
+    private readonly active = new Map<
+        string,
+        {
+            execution: vscode.NotebookCellExecution;
+            session: GroovySession;
+            stopped: boolean;
+        }
+    >();
     private readonly statusSubscription: vscode.Disposable;
-    
     private readonly controller: vscode.NotebookController;
-    
-    /**
-     * Creates a new Groovy kernel controller.
-     * @param registry - Session registry to manage Groovy process instances
-     */
+
     constructor(private readonly registry: SessionRegistry) {
         this.controller = vscode.notebooks.createNotebookController(
             GroovyKernelController.id,
             GroovyKernelController.type,
-            GroovyKernelController.label
+            GroovyKernelController.label,
         );
-        
-        this.controller.supportedLanguages = GroovyKernelController.supportedLanguages;
+        this.controller.supportedLanguages =
+            GroovyKernelController.supportedLanguages;
         this.controller.supportsExecutionOrder = true;
         this.controller.interruptHandler = this.interrupt.bind(this);
         this.controller.executeHandler = this.execute.bind(this);
-
-        this.statusSubscription = registry.onDidRestart((uri) => {
-            this.executionOrders.delete(uri.toString());
-        });
+        this.statusSubscription = registry.onDidRestart((uri) =>
+            this.executionOrders.delete(uri.toString()),
+        );
     }
-    
     public dispose(): void {
+        for (const q of this.queues.values()) q.clearPending();
+        this.queues.clear();
+        this.active.clear();
         this.statusSubscription.dispose();
         this.controller.dispose();
     }
-    
-    private interrupt(): void {
-        if (this.currentExecution) {
-            this.currentSession?.interrupt();
-            this.currentExecution.end(false, Date.now());
-            this.currentExecution = null;
+    public discardQueue(uri: vscode.Uri, reason: string): void {
+        this.queueFor(uri).discardPending(reason);
+        const a = this.active.get(uri.toString());
+        if (a && !a.stopped) {
+            a.stopped = true;
+            a.session.interrupt();
         }
     }
-    
-    private execute(cells: vscode.NotebookCell[]): void {
-        for (const cell of cells) {
-            this.queue = this.queue.then(() => this.executeCell(cell));
-        }
+    public disposeQueue(uri: vscode.Uri): void {
+        const k = uri.toString();
+        this.queues.get(k)?.clearPending();
+        this.queues.delete(k);
+        this.executionOrders.delete(k);
     }
-    
+    private interrupt(notebook: vscode.NotebookDocument): void {
+        this.discardQueue(notebook.uri, 'execution stopped');
+    }
+    private execute(
+        cells: vscode.NotebookCell[],
+        notebook: vscode.NotebookDocument,
+    ): void {
+        this.queueFor(notebook.uri).enqueue(...cells);
+    }
+    private queueFor(uri: vscode.Uri): ExecutionQueue<vscode.NotebookCell> {
+        const k = uri.toString();
+        let q = this.queues.get(k);
+        if (!q) {
+            q = new ExecutionQueue(
+                (c) => this.executeCell(c),
+                (c, reason) => this.discardCell(c, reason ?? 'kernel stopped'),
+            );
+            this.queues.set(k, q);
+        }
+        return q;
+    }
+    private discardCell(cell: vscode.NotebookCell, reason: string): void {
+        const e = this.controller.createNotebookCellExecution(cell);
+        e.start(Date.now());
+        e.appendOutput([
+            new vscode.NotebookCellOutput([
+                vscode.NotebookCellOutputItem.stderr(`Skipped: ${reason}`),
+            ]),
+        ]);
+        e.end(false, Date.now());
+    }
     private async executeCell(cell: vscode.NotebookCell): Promise<void> {
-        let execution: vscode.NotebookCellExecution | null = null;
-
+        const key = cell.notebook.uri.toString();
+        let execution: vscode.NotebookCellExecution | undefined;
+        let streamed = false;
         try {
-            const setup = await this.setupExecution(cell);
+            const setup = this.setupExecution(cell);
             execution = setup.execution;
-            const session = setup.session;
-
-            let streamedOutput = '';
-            let streamed = false;
-
+            let output = '';
             const onOutput = (chunk: string) => {
                 streamed = true;
-                streamedOutput += chunk;
-                execution!.replaceOutput([
-                    new vscode.NotebookCellOutput([
-                        createStdoutItem(streamedOutput)
-                    ])
+                output += chunk;
+                execution?.replaceOutput([
+                    new vscode.NotebookCellOutput([createStdoutItem(output)]),
                 ]);
             };
-
-            const result = await session.run(cell.document.getText(), onOutput);
-            this.handleOutputs(execution, result, streamed);
-        } catch (error) {
-            if (execution) {
-                this.handleOutputs(execution, null, false, error);
-            }
-        } finally {
-            if (execution) {
-                this.cleanupExecution(execution);
-            }
-        }
-    }
-
-    private async setupExecution(cell: vscode.NotebookCell): Promise<{ execution: vscode.NotebookCellExecution; session: Executable }> {
-        if (this.currentExecution) {
-            this.currentExecution.end(false, Date.now());
-        }
-
-        const execution = this.controller.createNotebookCellExecution(cell);
-        this.currentExecution = execution;
-        const notebookKey = cell.notebook.uri.toString();
-        const nextOrder = (this.executionOrders.get(notebookKey) ?? 0) + 1;
-        this.executionOrders.set(notebookKey, nextOrder);
-        execution.executionOrder = nextOrder;
-        execution.start(Date.now());
-        execution.clearOutput();
-
-        const cwd = normalizePath(cell.document.uri.path);
-        const session = this.registry.getOrCreate(cell.notebook.uri, cwd);
-        this.currentSession = session;
-
-        return { execution, session };
-    }
-
-    private appendOutput(execution: vscode.NotebookCellExecution, ...items: vscode.NotebookCellOutputItem[]): void {
-        execution.appendOutput([new vscode.NotebookCellOutput(items)]);
-    }
-
-    private handleError(execution: vscode.NotebookCellExecution, error: unknown, streamed: boolean): void {
-        const processError = error as ProcessError;
-        const message = processError.message || 'Unknown error';
-
-        if (!streamed && processError.stdout?.trim()) {
-            this.appendOutput(execution, createStdoutItem(processError.stdout));
-        }
-
-        this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr(processError.stderr || message));
-        execution.end(false, Date.now());
-    }
-
-    private handleSuccess(execution: vscode.NotebookCellExecution, result: ExecutionResult, streamed: boolean): void {
-        if (result.stderr?.trim()) {
-            this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr(result.stderr));
-        }
-        if (!streamed && result.stdout?.trim()) {
-            this.appendOutput(execution, createStdoutItem(result.stdout));
-        }
-        execution.end(true, Date.now());
-    }
-
-    private handleOutputs(execution: vscode.NotebookCellExecution, result: ExecutionResult | null, streamed: boolean, error?: unknown): void {
-        if (!this.isCurrentExecution(execution)) return;
-
-        if (error) {
-            const session = this.currentSession as GroovySession | undefined;
-            if (session?.wasInterrupted()) {
-                this.appendOutput(execution, vscode.NotebookCellOutputItem.stderr('Execution interrupted'));
+            const result = await setup.session.run(
+                cell.document.getText(),
+                onOutput,
+            );
+            const active = this.active.get(key);
+            if (active?.stopped) {
+                this.appendOutput(
+                    execution,
+                    vscode.NotebookCellOutputItem.stderr(
+                        'Execution interrupted',
+                    ),
+                );
                 execution.end(false, Date.now());
-            } else {
-                this.handleError(execution, error, streamed);
-            }
-        } else if (result) {
-            this.handleSuccess(execution, result, streamed);
+            } else this.handleSuccess(execution, result, streamed);
+        } catch (error) {
+            if (execution) this.handleError(execution, error, streamed);
+            throw error;
+        } finally {
+            if (this.active.get(key)?.execution === execution)
+                this.active.delete(key);
         }
     }
-
-    private cleanupExecution(execution: vscode.NotebookCellExecution): void {
-        if (this.currentExecution === execution) {
-            this.currentExecution = null;
-            this.currentSession = undefined;
-        }
+    private setupExecution(cell: vscode.NotebookCell): {
+        execution: vscode.NotebookCellExecution;
+        session: GroovySession;
+    } {
+        const e = this.controller.createNotebookCellExecution(cell);
+        const k = cell.notebook.uri.toString();
+        e.executionOrder = (this.executionOrders.get(k) ?? 0) + 1;
+        this.executionOrders.set(k, e.executionOrder);
+        e.start(Date.now());
+        e.clearOutput();
+        const s = this.registry.getOrCreate(
+            cell.notebook.uri,
+            normalizePath(cell.document.uri.path),
+        );
+        this.active.set(k, { execution: e, session: s, stopped: false });
+        return { execution: e, session: s };
     }
-
-    private isCurrentExecution(execution: vscode.NotebookCellExecution): boolean {
-        return this.currentExecution === execution;
+    private appendOutput(
+        e: vscode.NotebookCellExecution,
+        ...items: vscode.NotebookCellOutputItem[]
+    ): void {
+        e.appendOutput([new vscode.NotebookCellOutput(items)]);
+    }
+    private handleError(
+        e: vscode.NotebookCellExecution,
+        error: unknown,
+        streamed: boolean,
+    ): void {
+        const p = error as ProcessError;
+        if (!streamed && p.stdout?.trim())
+            this.appendOutput(e, createStdoutItem(p.stdout));
+        this.appendOutput(
+            e,
+            vscode.NotebookCellOutputItem.stderr(
+                p.stderr || p.message || 'Unknown error',
+            ),
+        );
+        e.end(false, Date.now());
+    }
+    private handleSuccess(
+        e: vscode.NotebookCellExecution,
+        r: ExecutionResult,
+        streamed: boolean,
+    ): void {
+        if (r.stderr?.trim())
+            this.appendOutput(
+                e,
+                vscode.NotebookCellOutputItem.stderr(r.stderr),
+            );
+        if (!streamed && r.stdout?.trim())
+            this.appendOutput(e, createStdoutItem(r.stdout));
+        e.end(true, Date.now());
     }
 }
