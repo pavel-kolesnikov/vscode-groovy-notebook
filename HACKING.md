@@ -81,7 +81,8 @@ Command Palette).
 |---|---|
 | `npm run compile` | Build Groovy helpers jar + TypeScript (`tsc -b`) |
 | `npm run watch` | Watch-mode TypeScript compilation (used by F5 launch) |
-| `npm run lint` | ESLint on `src/` |
+| `npm run lint` | Biome check (format + lint) on `src/` and `scripts/` |
+| `npm run format` | Apply Biome format, lint fixes, and import sort |
 | `npm test` | Run TypeScript tests (Mocha), then Groovy tests |
 | `npm run test:ts` | TypeScript tests only |
 | `npm run test:groovy` | Groovy tests only (skips gracefully if `groovy` not found) |
@@ -192,7 +193,7 @@ vscode-groovy-notebook/
 ├── tsconfig.json             #   TypeScript config (ES2022, NodeNext modules)
 ├── tsconfig.test.json        #   Test-specific TS config
 ├── .mocharc.json             #   Mocha configuration (ts-node loader)
-├── eslint.config.js          #   ESLint flat config
+├── biome.json                #   Biome format + lint config
 ├── AGENTS.md                 #   AI assistant maintenance guide
 └── README.md                 #   User-facing documentation
 ```

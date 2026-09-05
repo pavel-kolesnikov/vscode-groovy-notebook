@@ -1,10 +1,22 @@
-import assert from 'assert';
-import type { ExecutionStatus, ExecutionResult, ExecutionError, Executable, ProcessConfig } from '../typescript/types.js';
+import assert from 'node:assert';
+import type {
+    Executable,
+    ExecutionError,
+    ExecutionResult,
+    ExecutionStatus,
+    ProcessConfig,
+} from '../typescript/types.js';
 
 describe('types.ts interfaces', () => {
     describe('ExecutionStatus', () => {
         it('should be a union type of valid status values', () => {
-            const statuses: ExecutionStatus[] = ['idle', 'starting', 'busy', 'error', 'terminated'];
+            const statuses: ExecutionStatus[] = [
+                'idle',
+                'starting',
+                'busy',
+                'error',
+                'terminated',
+            ];
             assert.strictEqual(statuses.length, 5);
         });
     });
@@ -14,7 +26,7 @@ describe('types.ts interfaces', () => {
             const result: ExecutionResult = {
                 stdout: 'output',
                 stderr: '',
-                exitCode: 0
+                exitCode: 0,
             };
             assert.strictEqual(result.stdout, 'output');
             assert.strictEqual(result.exitCode, 0);
@@ -24,7 +36,7 @@ describe('types.ts interfaces', () => {
             const result: ExecutionResult = {
                 stdout: '',
                 stderr: 'error',
-                exitCode: null
+                exitCode: null,
             };
             assert.strictEqual(result.exitCode, null);
         });
@@ -57,7 +69,7 @@ describe('types.ts interfaces', () => {
                 async run(code: string): Promise<ExecutionResult> {
                     return { stdout: code, stderr: '', exitCode: 0 };
                 },
-                interrupt(): void {}
+                interrupt(): void {},
             };
 
             assert.strictEqual(typeof executable.run, 'function');
@@ -67,9 +79,13 @@ describe('types.ts interfaces', () => {
         it('should return ExecutionResult from run', async () => {
             const executable: Executable = {
                 async run(code: string): Promise<ExecutionResult> {
-                    return { stdout: `executed: ${code}`, stderr: '', exitCode: 0 };
+                    return {
+                        stdout: `executed: ${code}`,
+                        stderr: '',
+                        exitCode: 0,
+                    };
                 },
-                interrupt(): void {}
+                interrupt(): void {},
             };
 
             const result = await executable.run('test');
@@ -83,7 +99,7 @@ describe('types.ts interfaces', () => {
             const config: ProcessConfig = {
                 groovyPath: '/usr/bin/groovy',
                 evalScriptPath: '/path/to/Kernel.groovy',
-                cwd: '/workspace'
+                cwd: '/workspace',
             };
             assert.strictEqual(config.groovyPath, '/usr/bin/groovy');
             assert.strictEqual(config.evalScriptPath, '/path/to/Kernel.groovy');
@@ -95,7 +111,7 @@ describe('types.ts interfaces', () => {
                 groovyPath: '/usr/bin/groovy',
                 evalScriptPath: '/path/to/Kernel.groovy',
                 cwd: '/workspace',
-                javaHome: '/usr/lib/jvm/java-11'
+                javaHome: '/usr/lib/jvm/java-11',
             };
             assert.strictEqual(config.javaHome, '/usr/lib/jvm/java-11');
         });
@@ -104,7 +120,7 @@ describe('types.ts interfaces', () => {
             const config: ProcessConfig = {
                 groovyPath: '/usr/bin/groovy',
                 evalScriptPath: '/path/to/Kernel.groovy',
-                cwd: '/workspace'
+                cwd: '/workspace',
             };
             assert.strictEqual(config.javaHome, undefined);
         });
@@ -112,16 +128,19 @@ describe('types.ts interfaces', () => {
         it('should support spreading to create derived configs', () => {
             const baseConfig: Omit<ProcessConfig, 'cwd'> = {
                 groovyPath: '/usr/bin/groovy',
-                evalScriptPath: '/path/to/Kernel.groovy'
+                evalScriptPath: '/path/to/Kernel.groovy',
             };
-            
+
             const fullConfig: ProcessConfig = {
                 ...baseConfig,
-                cwd: '/workspace'
+                cwd: '/workspace',
             };
-            
+
             assert.strictEqual(fullConfig.groovyPath, '/usr/bin/groovy');
-            assert.strictEqual(fullConfig.evalScriptPath, '/path/to/Kernel.groovy');
+            assert.strictEqual(
+                fullConfig.evalScriptPath,
+                '/path/to/Kernel.groovy',
+            );
             assert.strictEqual(fullConfig.cwd, '/workspace');
         });
 
@@ -129,14 +148,14 @@ describe('types.ts interfaces', () => {
             const baseConfig: Omit<ProcessConfig, 'cwd'> = {
                 groovyPath: '/usr/bin/groovy',
                 evalScriptPath: '/path/to/Kernel.groovy',
-                javaHome: '/usr/lib/jvm/java-11'
+                javaHome: '/usr/lib/jvm/java-11',
             };
-            
+
             const fullConfig: ProcessConfig = {
                 ...baseConfig,
-                cwd: '/workspace'
+                cwd: '/workspace',
             };
-            
+
             assert.strictEqual(fullConfig.javaHome, '/usr/lib/jvm/java-11');
         });
 
@@ -145,7 +164,7 @@ describe('types.ts interfaces', () => {
                 groovyPath: '/usr/bin/groovy',
                 evalScriptPath: '/path/to/Kernel.groovy',
                 classpath: '/path/to/kernel-helpers.jar',
-                cwd: '/workspace'
+                cwd: '/workspace',
             };
             assert.strictEqual(config.classpath, '/path/to/kernel-helpers.jar');
         });

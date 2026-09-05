@@ -95,7 +95,8 @@
     "build:groovy": "cd src/groovy && rm -rf build && mkdir build && groovyc -d build *Helper.groovy && jar cf kernel-helpers.jar -C build . && rm -rf build",
     "compile": "npm run build:groovy && tsc -b",
     "watch": "tsc -b --watch",
-    "lint": "eslint src --ext ts",
+    "lint": "biome check",
+    "format": "biome check --write",
     "pack": "node_modules/@vscode/vsce/vsce package --pre-release",
     "vscode:prepublish": "npm run compile",
     "dogfood": "npm run pack && code --install-extension $(ls -t groovy-notebook-*.vsix | head -1)",
@@ -108,13 +109,11 @@
     "serialize-javascript": "^7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
     "@types/mocha": "^10",
     "@types/node": "^25",
     "@types/vscode": "^1",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
     "@vscode/vsce": "^3",
-    "eslint": "^9",
     "mocha": "^11",
     "tsx": "^4",
     "typescript": "^5"

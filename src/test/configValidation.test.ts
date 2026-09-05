@@ -1,5 +1,8 @@
-import assert from 'assert';
-import { validateGroovyPath, validateJavaHome } from '../typescript/configValidation.js';
+import assert from 'node:assert';
+import {
+    validateGroovyPath,
+    validateJavaHome,
+} from '../typescript/configValidation.js';
 
 describe('configValidation.ts', () => {
     describe('validateGroovyPath', () => {
@@ -36,7 +39,10 @@ describe('configValidation.ts', () => {
         it('should reject null character in path', () => {
             const result = validateGroovyPath('/path/to\0groovy');
             assert.strictEqual(result.valid, false);
-            assert.strictEqual(result.message, 'Groovy path contains invalid null character');
+            assert.strictEqual(
+                result.message,
+                'Groovy path contains invalid null character',
+            );
         });
     });
 
@@ -68,13 +74,19 @@ describe('configValidation.ts', () => {
         it('should reject whitespace-only string', () => {
             const result = validateJavaHome('   ');
             assert.strictEqual(result.valid, false);
-            assert.strictEqual(result.message, 'Java home cannot be whitespace only');
+            assert.strictEqual(
+                result.message,
+                'Java home cannot be whitespace only',
+            );
         });
 
         it('should reject null character in path', () => {
             const result = validateJavaHome('/path/to\0java');
             assert.strictEqual(result.valid, false);
-            assert.strictEqual(result.message, 'Java home contains invalid null character');
+            assert.strictEqual(
+                result.message,
+                'Java home contains invalid null character',
+            );
         });
     });
 });

@@ -1,4 +1,9 @@
-export type ExecutionStatus = 'idle' | 'starting' | 'busy' | 'error' | 'terminated';
+export type ExecutionStatus =
+    | 'idle'
+    | 'starting'
+    | 'busy'
+    | 'error'
+    | 'terminated';
 
 export interface ProcessConfig {
     groovyPath: string;
@@ -21,6 +26,9 @@ export interface ExecutionError extends Error {
 }
 
 export interface Executable {
-    run(code: string, onOutput?: (chunk: string) => void): Promise<ExecutionResult>;
+    run(
+        code: string,
+        onOutput?: (chunk: string) => void,
+    ): Promise<ExecutionResult>;
     interrupt(): void;
 }

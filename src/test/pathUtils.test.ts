@@ -1,4 +1,4 @@
-import assert from 'assert';
+import assert from 'node:assert';
 import { normalizePath } from '../typescript/pathUtils.js';
 
 describe('pathUtils.ts', () => {
@@ -11,11 +11,16 @@ describe('pathUtils.ts', () => {
             });
 
             afterEach(() => {
-                Object.defineProperty(process, 'platform', { value: originalPlatform });
+                Object.defineProperty(process, 'platform', {
+                    value: originalPlatform,
+                });
             });
 
             it('should return parent directory for file path', () => {
-                assert.strictEqual(normalizePath('/home/user/project/file.groovy'), '/home/user/project');
+                assert.strictEqual(
+                    normalizePath('/home/user/project/file.groovy'),
+                    '/home/user/project',
+                );
             });
 
             it('should return root for path in root', () => {
@@ -23,7 +28,10 @@ describe('pathUtils.ts', () => {
             });
 
             it('should return parent for nested directory path', () => {
-                assert.strictEqual(normalizePath('/a/b/c/d/file.groovy'), '/a/b/c/d');
+                assert.strictEqual(
+                    normalizePath('/a/b/c/d/file.groovy'),
+                    '/a/b/c/d',
+                );
             });
 
             it('should return path as-is when no slash exists', () => {
@@ -31,11 +39,17 @@ describe('pathUtils.ts', () => {
             });
 
             it('should handle relative path with multiple segments', () => {
-                assert.strictEqual(normalizePath('src/main/groovy/file.groovy'), 'src/main/groovy');
+                assert.strictEqual(
+                    normalizePath('src/main/groovy/file.groovy'),
+                    'src/main/groovy',
+                );
             });
 
             it('should handle trailing slash', () => {
-                assert.strictEqual(normalizePath('/home/user/dir/'), '/home/user/dir');
+                assert.strictEqual(
+                    normalizePath('/home/user/dir/'),
+                    '/home/user/dir',
+                );
             });
         });
 
@@ -47,19 +61,30 @@ describe('pathUtils.ts', () => {
             });
 
             afterEach(() => {
-                Object.defineProperty(process, 'platform', { value: originalPlatform });
+                Object.defineProperty(process, 'platform', {
+                    value: originalPlatform,
+                });
             });
 
             it('should convert VSCode URI path to Windows path format', () => {
-                assert.strictEqual(normalizePath('/C:/Users/project/file.groovy'), 'C:/Users/project');
+                assert.strictEqual(
+                    normalizePath('/C:/Users/project/file.groovy'),
+                    'C:/Users/project',
+                );
             });
 
             it('should handle lowercase drive letter', () => {
-                assert.strictEqual(normalizePath('/c:/Users/project/file.groovy'), 'c:/Users/project');
+                assert.strictEqual(
+                    normalizePath('/c:/Users/project/file.groovy'),
+                    'c:/Users/project',
+                );
             });
 
             it('should handle path without drive letter prefix', () => {
-                assert.strictEqual(normalizePath('C:/Users/project/file.groovy'), 'C:/Users/project');
+                assert.strictEqual(
+                    normalizePath('C:/Users/project/file.groovy'),
+                    'C:/Users/project',
+                );
             });
 
             it('should handle path with no slash returning path as-is', () => {
